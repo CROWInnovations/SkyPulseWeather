@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- 3 distinct 3D cloud variations drifting at calm half-speed (11s per pass = 33s full variety cycle) -->
+    <ViewFlipper
+        android:id="@+id/widget_cloud_flipper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:autoStart="true"
+        android:flipInterval="11050"
+        android:inAnimation="@anim/widget_cloud_drift_in"
+        android:outAnimation="@anim/widget_cloud_drift_out">
+
+        <ImageView
+            android:id="@+id/widget_cloud_frame_1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY" />
+
+        <ImageView
+            android:id="@+id/widget_cloud_frame_2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY" />
+
+        <ImageView
+            android:id="@+id/widget_cloud_frame_3"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY" />
+
+    </ViewFlipper>
+
+    <!-- 3-frame rotating & radiating golden-orange solar rays on Sunny days -->
+    <ViewFlipper
+        android:id="@+id/widget_sun_pulse_flipper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:autoStart="true"
+        android:flipInterval="1950"
+        android:inAnimation="@anim/widget_sun_pulse_in"
+        android:outAnimation="@anim/widget_sun_pulse_out"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/widget_sun_pulse_frame_1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY" />
+
+        <ImageView
+            android:id="@+id/widget_sun_pulse_frame_2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY" />
+
+        <ImageView
+            android:id="@+id/widget_sun_pulse_frame_3"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY" />
+
+    </ViewFlipper>
+
+</FrameLayout>

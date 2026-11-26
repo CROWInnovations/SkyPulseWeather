@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal|top"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextClock
+            android:id="@+id/widget_clock_default"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif"
+            android:format12Hour="h:mm a"
+            android:format24Hour="HH:mm"
+            android:gravity="center_horizontal|top"
+            android:includeFontPadding="false"
+            android:shadowColor="#E0020617"
+            android:shadowDx="0"
+            android:shadowDy="2"
+            android:shadowRadius="8"
+            android:singleLine="true"
+            android:textAlignment="center"
+            android:textColor="#FFF8FAFC"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:visibility="visible" />
+
+        <TextClock
+            android:id="@+id/widget_clock_serif"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="serif"
+            android:format12Hour="h:mm a"
+            android:format24Hour="HH:mm"
+            android:gravity="center_horizontal|top"
+            android:includeFontPadding="false"
+            android:shadowColor="#E0020617"
+            android:shadowDx="0"
+            android:shadowDy="2"
+            android:shadowRadius="8"
+            android:singleLine="true"
+            android:textAlignment="center"
+            android:textColor="#FFF8FAFC"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextClock
+            android:id="@+id/widget_clock_mono"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="monospace"
+            android:format12Hour="h:mm a"
+            android:format24Hour="HH:mm"
+            android:gravity="center_horizontal|top"
+            android:includeFontPadding="false"
+            android:shadowColor="#E0020617"
+            android:shadowDx="0"
+            android:shadowDy="2"
+            android:shadowRadius="8"
+            android:singleLine="true"
+            android:textAlignment="center"
+            android:textColor="#FFF8FAFC"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextClock
+            android:id="@+id/widget_clock_italic"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif"
+            android:format12Hour="h:mm a"
+            android:format24Hour="HH:mm"
+            android:gravity="center_horizontal|top"
+            android:includeFontPadding="false"
+            android:shadowColor="#E0020617"
+            android:shadowDx="0"
+            android:shadowDy="2"
+            android:shadowRadius="8"
+            android:singleLine="true"
+            android:textAlignment="center"
+            android:textColor="#FFF8FAFC"
+            android:textSize="18sp"
+            android:textStyle="bold|italic"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/widget_date_below_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:visibility="gone">
+
+        <TextClock
+            android:id="@+id/widget_date_below_default"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif"
+            android:format12Hour="MMM d"
+            android:format24Hour="MMM d"
+            android:gravity="center_horizontal|top"
+            android:includeFontPadding="false"
+            android:shadowColor="#E0020617"
+            android:shadowDx="0"
+            android:shadowDy="2"
+            android:shadowRadius="8"
+            android:singleLine="true"
+            android:textAlignment="center"
+            android:textColor="#FFF8FAFC"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="visible" />
+
+        <TextClock
+            android:id="@+id/widget_date_below_serif"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="serif"
+            android:format12Hour="MMM d"
+            android:format24Hour="MMM d"
+            android:gravity="center_horizontal|top"
+            android:includeFontPadding="false"
+            android:shadowColor="#E0020617"
+            android:shadowDx="0"
+            android:shadowDy="2"
+            android:shadowRadius="8"
+            android:singleLine="true"
+            android:textAlignment="center"
+            android:textColor="#FFF8FAFC"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextClock
+            android:id="@+id/widget_date_below_mono"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="monospace"
+            android:format12Hour="MMM d"
+            android:format24Hour="MMM d"
+            android:gravity="center_horizontal|top"
+            android:includeFontPadding="false"
+            android:shadowColor="#E0020617"
+            android:shadowDx="0"
+            android:shadowDy="2"
+            android:shadowRadius="8"
+            android:singleLine="true"
+            android:textAlignment="center"
+            android:textColor="#FFF8FAFC"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextClock
+            android:id="@+id/widget_date_below_italic"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif"
+            android:format12Hour="MMM d"
+            android:format24Hour="MMM d"
+            android:gravity="center_horizontal|top"
+            android:includeFontPadding="false"
+            android:shadowColor="#E0020617"
+            android:shadowDx="0"
+            android:shadowDy="2"
+            android:shadowRadius="8"
+            android:singleLine="true"
+            android:textAlignment="center"
+            android:textColor="#FFF8FAFC"
+            android:textSize="14sp"
+            android:textStyle="bold|italic"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+</LinearLayout>

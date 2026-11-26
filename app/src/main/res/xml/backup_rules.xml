@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="database" path="skypulse_weather.db" />
+    <exclude domain="database" path="skypulse_weather.db-shm" />
+    <exclude domain="database" path="skypulse_weather.db-wal" />
+</full-backup-content>

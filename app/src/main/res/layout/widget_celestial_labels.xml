@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_celestial_labels_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_horizontal"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/widget_moon_phase_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:shadowColor="#E0020814"
+        android:shadowDx="0"
+        android:shadowDy="1.5"
+        android:shadowRadius="4.5"
+        android:singleLine="true"
+        android:textColor="#BAE6FD"
+        android:textSize="10.8sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/widget_celestial_hilo_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:shadowColor="#E0020814"
+        android:shadowDx="0"
+        android:shadowDy="1.5"
+        android:shadowRadius="4.5"
+        android:singleLine="true"
+        android:textColor="#F8FAFC"
+        android:textSize="10.8sp"
+        android:textStyle="bold" />
+
+</LinearLayout>

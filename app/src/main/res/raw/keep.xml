@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@layout/widget_cloud_motion,@anim/widget_cloud_drift_in,@anim/widget_cloud_drift_out,@anim/widget_sun_pulse_in,@anim/widget_sun_pulse_out" />

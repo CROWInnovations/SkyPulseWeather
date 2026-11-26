@@ -1,0 +1,37 @@
+# Local Dev Captures & Working Notes (Never upload personal device screenshots to GitHub)
+screenshots/
+/screenshots/
+play_store_assets/screenshots/
+WALKTHROUGH.md
+*.docx
+
+# Gradle & Android Build Outputs
+.gradle/
+.kotlin/
+build/
+app/build/
+local.properties
+captures/
+
+# IDE & OS Files
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+.externalNativeBuild/
+.cxx/
+
+# Helper Scripts
+*.ps1
+*.bat
+!gradlew.bat
+
+# Private Release / Upload Keystores & Secrets (NEVER commit signing keys)
+keystore/
+*.jks
+*.keystore
+keystore.properties
+
+# Raw Build Binaries
+*.apk
+*.aab

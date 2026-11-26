@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">SkyPulse Weather</string>
+    <string name="widget_5x2_name">SkyPulse Wide (5×2)</string>
+    <string name="widget_name">SkyPulse Forecast (4×2)</string>
+    <string name="widget_2x2_name">SkyPulse Square (2×2)</string>
+    <string name="widget_2x1_name">SkyPulse Compact (2×1)</string>
+    <string name="widget_1x1_name">SkyPulse Mini (1×1)</string>
+    <string name="widget_5x2_description">5×2 wide weather &amp; swipeable 10-day forecast widget updated every 15 minutes.</string>
+    <string name="widget_description">Full weather &amp; swipeable 10-day forecast widget updated every 15 minutes.</string>
+    <string name="widget_2x2_description">2×2 square weather widget showing temperature, humidity, feels-like, and high/low.</string>
+    <string name="widget_2x1_description">2×1 compact strip widget showing location, live temperature, condition, and high/low.</string>
+    <string name="widget_1x1_description">1×1 mini tile widget showing live temperature and high/low at a glance.</string>
+</resources>

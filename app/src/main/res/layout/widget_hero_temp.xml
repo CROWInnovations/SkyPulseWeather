@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/widget_temp_default"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif"
+        android:gravity="start|top"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:shadowColor="#D8020617"
+        android:shadowDx="0"
+        android:shadowDy="2"
+        android:shadowRadius="8"
+        android:singleLine="true"
+        android:textColor="#FFF8FAFC"
+        android:textSize="44sp"
+        android:textStyle="bold"
+        android:visibility="visible" />
+
+    <TextView
+        android:id="@+id/widget_temp_serif"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:ellipsize="end"
+        android:fontFamily="serif"
+        android:gravity="start|top"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:shadowColor="#D8020617"
+        android:shadowDx="0"
+        android:shadowDy="2"
+        android:shadowRadius="8"
+        android:singleLine="true"
+        android:textColor="#FFF8FAFC"
+        android:textSize="44sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/widget_temp_mono"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:ellipsize="end"
+        android:fontFamily="monospace"
+        android:gravity="start|top"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:shadowColor="#D8020617"
+        android:shadowDx="0"
+        android:shadowDy="2"
+        android:shadowRadius="8"
+        android:singleLine="true"
+        android:textColor="#FFF8FAFC"
+        android:textSize="44sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/widget_temp_italic"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif"
+        android:gravity="start|top"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:shadowColor="#D8020617"
+        android:shadowDx="0"
+        android:shadowDy="2"
+        android:shadowRadius="8"
+        android:singleLine="true"
+        android:textColor="#FFF8FAFC"
+        android:textSize="44sp"
+        android:textStyle="bold|italic"
+        android:visibility="gone" />
+
+</FrameLayout>

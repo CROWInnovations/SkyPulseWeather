@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy — SkyPulse Weather</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 780px;
+      margin: 40px auto;
+      padding: 0 20px;
+      line-height: 1.65;
+      color: #0f172a;
+      background: #f8fafc;
+    }
+    h1, h2 { color: #0b1324; }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+    .meta { color: #475569; font-size: 0.92rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Privacy Policy — SkyPulse Weather</h1>
+    <p class="meta">Effective Date: November 22, 2026 · Application ID: <code>com.crowinnovations.skypulseweather</code></p>
+
+    <h2>1. Overview</h2>
+    <p>
+      <strong>SkyPulse Weather</strong> is a free, ad-free Android weather and home-screen widget application.
+      We do not require user accounts, embed advertising SDKs, collect device identifiers, or sell user data.
+    </p>
+
+    <h2>2. Location Data (Optional &amp; Foreground-Only)</h2>
+    <ul>
+      <li><strong>When Requested:</strong> Device location is accessed strictly in the foreground only when you explicitly tap <em>"Use Current GPS Location"</em>. You may use the app and widgets without granting location permission by entering a U.S. ZIP code or city name.</li>
+      <li><strong>No Background Tracking:</strong> SkyPulse Weather never requests <code>ACCESS_BACKGROUND_LOCATION</code> and never tracks continuous device movement.</li>
+      <li><strong>Coordinate Normalization:</strong> Before requesting forecasts over HTTPS, coordinates are rounded to ~2 km geographic cache cells to minimize precision exposure.</li>
+    </ul>
+
+    <h2>3. Weather &amp; Geocoding Service Providers</h2>
+    <p>To deliver live weather forecasts, U.S. severe weather alerts, and location lookup, encrypted HTTPS requests containing only the requested city/ZIP or rounded coordinates are sent directly to:</p>
+    <ul>
+      <li><strong>Open-Meteo</strong> (<a href="https://open-meteo.com/en/terms">open-meteo.com</a>) — Current conditions, hourly/daily forecasts, and city geocoding (CC BY 4.0).</li>
+      <li><strong>NOAA / National Weather Service</strong> (<a href="https://www.weather.gov/privacy">weather.gov</a>) — U.S. active severe weather alerts and point metadata.</li>
+      <li><strong>Zippopotam.us</strong> (<a href="https://api.zippopotam.us">zippopotam.us</a>) — 5-digit U.S. postal code coordinate lookup.</li>
+    </ul>
+
+    <h2>4. Local Data Storage &amp; User Deletion Controls</h2>
+    <p>
+      Saved locations, widget bindings, unit/theme/clock/typography preferences, and cached 15-minute forecasts are stored locally on your Android device using Jetpack Room and DataStore (excluded from cloud database backups). You can remove any saved location at any time inside the app's <em>Locations</em> menu or erase all local app data via Android System Settings.
+    </p>
+
+    <h2>5. Security</h2>
+    <p>
+      All network communications enforce TLS/HTTPS encryption (cleartext HTTP traffic is disabled at the Android OS manifest level).
+    </p>
+
+    <h2>6. Changes &amp; Contact</h2>
+    <p>
+      Updates to this Privacy Policy will be published at this URL and reflected inside the app's <em>Settings &amp; Data Safety</em> screen.
+    </p>
+  </div>
+</body>
+</html>
