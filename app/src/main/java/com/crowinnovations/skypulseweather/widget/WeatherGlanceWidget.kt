@@ -1934,8 +1934,17 @@ private fun WidgetCardSurface(
                             }
                         }
 
+                        val dayDetailsModifier = if (hasDetailsBacking) {
+                            GlanceModifier
+                                .fillMaxWidth()
+                                .cornerRadius(12.dp)
+                                .background(ColorProvider(detailsBackingColor))
+                                .padding(horizontal = 7.dp, vertical = 3.dp)
+                        } else {
+                            GlanceModifier.fillMaxWidth()
+                        }
                         Column(
-                            modifier = GlanceModifier.fillMaxWidth(),
+                            modifier = dayDetailsModifier,
                             horizontalAlignment = Alignment.Start
                         ) {
                             Text(
@@ -1943,7 +1952,7 @@ private fun WidgetCardSurface(
                                 maxLines = 1,
                                 modifier = GlanceModifier.fillMaxWidth(),
                                 style = TextStyle(
-                                    color = primaryColor,
+                                    color = detailsPrimaryColor,
                                     fontSize = hlPrimarySpFloat.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -1951,8 +1960,9 @@ private fun WidgetCardSurface(
                             Text(
                                 text = condHumidityLineText,
                                 maxLines = 1,
+                                modifier = GlanceModifier.fillMaxWidth(),
                                 style = TextStyle(
-                                    color = humidityColor,
+                                    color = detailsHumidityColor,
                                     fontSize = condHumiditySpFloat.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -1961,8 +1971,9 @@ private fun WidgetCardSurface(
                                 Text(
                                     text = model.windAndUvLine,
                                     maxLines = 1,
+                                    modifier = GlanceModifier.fillMaxWidth(),
                                     style = TextStyle(
-                                        color = windUvColor,
+                                        color = detailsWindUvColor,
                                         fontSize = windUvSpFloat.sp,
                                         fontWeight = FontWeight.Bold
                                     )
