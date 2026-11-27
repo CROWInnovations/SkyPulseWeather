@@ -181,7 +181,7 @@ class WeatherViewModel @Inject constructor(
                 it.copy(
                     isSearching = false,
                     searchResults = emptyList(),
-                    searchError = "Enter at least 2 valid letters or digits (e.g. 21201 or Baltimore)."
+                    searchError = "Enter at least 2 valid letters or digits (e.g. 20001 or Washington)."
                 )
             }
             return

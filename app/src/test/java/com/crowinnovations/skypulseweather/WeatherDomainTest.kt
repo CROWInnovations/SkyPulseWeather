@@ -163,13 +163,13 @@ class WeatherDomainTest {
     @Test
     fun inputSecurityValidatorEnforcesStrictAllowlistAndSsrfProtection() {
         // Valid ZIPs and Unicode cities pass cleanly
-        assertEquals("21201", InputSecurityValidator.validateLocationSearchQuery("  21201\u200B "))
+        assertEquals("20001", InputSecurityValidator.validateLocationSearchQuery("  20001\u200B "))
         assertEquals("St. John's, NL", InputSecurityValidator.validateLocationSearchQuery("St. John's, NL"))
         assertEquals("München", InputSecurityValidator.validateLocationSearchQuery("München"))
 
         // Injection, HTML, path traversal, and control payloads rejected
         assertNull(InputSecurityValidator.validateLocationSearchQuery("<script>alert(1)</script>"))
-        assertNull(InputSecurityValidator.validateLocationSearchQuery("21201; DROP TABLE saved_locations;--"))
+        assertNull(InputSecurityValidator.validateLocationSearchQuery("20001; DROP TABLE saved_locations;--"))
         assertNull(InputSecurityValidator.validateLocationSearchQuery("../../etc/passwd"))
         assertNull(InputSecurityValidator.validateLocationSearchQuery("a"))
 

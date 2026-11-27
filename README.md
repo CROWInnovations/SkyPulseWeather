@@ -33,9 +33,9 @@
 | :---: | :---: | :---: |
 | <img src="./docs/images/washington_dc_widget.png" alt="Washington DC 10-Day Swipeable Home Screen Widget" width="255" /> | <img src="./docs/images/washington_dc_widget_sizes.png" alt="Washington DC Compact and Square Widget Sizes" width="255" /> | <img src="./docs/images/washington_dc_fullscreen.png" alt="Washington DC Full Screen Forecast" width="255" /> |
 
-| Clean `v1.3.0` Settings & Color/Font Controls | Widescreen / Landscape View |
-| :---: | :---: |
-| <img src="./docs/images/washington_dc_settings.png" alt="SkyPulse Weather v1.3.0 Settings" width="260" /> | <img src="./docs/images/washington_dc_landscape.png" alt="Washington DC Landscape Forecast" width="460" /> |
+| `v1.3.5` Full-Screen Display Settings | `v1.3.5` Widget Display Settings | Widescreen / Landscape View |
+| :---: | :---: | :---: |
+| <img src="./docs/images/washington_dc_settings.png" alt="SkyPulse Weather v1.3.5 Full Screen Display Settings" width="245" /> | <img src="./docs/images/washington_dc_widget_settings.png" alt="SkyPulse Weather v1.3.5 Widget Display Settings" width="245" /> | <img src="./docs/images/washington_dc_landscape.png" alt="Washington DC Landscape Forecast" width="380" /> |
 
 ---
 

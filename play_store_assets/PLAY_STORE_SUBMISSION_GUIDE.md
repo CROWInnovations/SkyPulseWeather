@@ -17,7 +17,7 @@
   FEATURES
   • Swipeable 10-Day Forecast & Home Widget: View 24-hour hourly strips and 10-day temperature & precipitation forecasts with M/d date labels and >50% rain callouts, and swipe smoothly right or left across all 10 days directly on your home-screen widget.
   • 6 Widget Size Options (5×3, 5×2, 4×2, 2×2, 2×1, 1×1): Pick from Mini (1×1), Compact Strip (2×1), Square (2×2), Classic 10-Day (4×2), Widescreen 10-Day (5×2), or Expanded 10-Day (5×3) widgets—each formatted cleanly for its size.
-  • Custom Temperature, Forecast & Top Clock Styling: Optional top centered clock and abbreviated month/day Date Display (Off, Left of Time, Right of Time, or Below Time), Hourly & 10-Day card transparency (+/-) and font boost (+1sp to +10sp), plus independent font size, font style (Default, Serif, Mono, Italic), and full-spectrum hexagonal color-wheel selection.
+  • Separated Full-Screen & Widget Display Styling (0.5sp Precision): Independently configure Full Screen Display and Widget Display sections—all font size controls use sp sizing with fine 0.5sp (− / +) decrease and increase increments across Temperature (20sp–74sp), Top Centered Clock & Date (10sp–74sp), Full-Screen Forecast Cards (7sp–22sp), Widget Details Below Temp (7sp–18sp with optional Darken/Default/Lighten + transparency background), and Widget 10-Day Forecast Slider (7sp–17sp with Darken/Default/Lighten + transparency backing), plus font style (Default, Serif, Mono, Italic) and full-spectrum hexagonal color-wheel selection.
   • Balanced 3D Skies & True Moon Phases: Glare-balanced golden sun with animated solar rays, drifting 3D clouds, continuous 3D falling rain on larger widgets and full screen, and centered 3D lunar phase rendering.
   • Fast 15-Minute Automatic Sync: Background updates every 15 minutes keep current temps, wind speed (mph or km/h), UV index, and active U.S. NOAA severe weather alerts up to date.
   • Multiple Locations (GPS, ZIP Code, or City): Track optional foreground GPS alongside saved U.S. 5-digit ZIP codes and global cities.
@@ -43,7 +43,7 @@
 - **Security Practices**:
   - Data is encrypted in transit (`TLS 1.2/1.3 HTTPS` enforced via `network_security_config.xml` and `usesCleartextTraffic="false"`): **Yes**.
 
-## 4. Technical Release Checklist (v1.3.2 — `versionCode 6`)
+## 4. Technical Release Checklist (v1.3.5 — `versionCode 9`)
 - **Signed Release App Bundle (`.aab`)**: `app/build/outputs/bundle/release/app-release.aab`
 - **Signed Release APK (`.apk`)**: `app/build/outputs/apk/release/app-release.apk`
 - **R8 Deobfuscation Mapping File**: `app/build/outputs/mapping/release/mapping.txt`

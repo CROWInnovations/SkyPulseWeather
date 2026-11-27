@@ -228,7 +228,7 @@ fun ManageLocationsSheet(
                 textStyle = MaterialTheme.typography.bodyMedium,
                 placeholder = {
                     SingleLineText(
-                        text = "Search US ZIP (21201) or city…",
+                        text = "Search US ZIP (20001) or city…",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },

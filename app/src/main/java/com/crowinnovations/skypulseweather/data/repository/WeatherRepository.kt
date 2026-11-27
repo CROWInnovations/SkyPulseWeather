@@ -93,11 +93,11 @@ class WeatherRepository @Inject constructor(
             if (existing.isEmpty()) {
                 val id = weatherDao.insertLocation(
                     SavedLocationEntity(
-                        name = "Baltimore, MD",
-                        subtitle = "US ZIP 21201 · Maryland",
-                        latitude = 39.2946,
-                        longitude = -76.6252,
-                        zipCode = "21201",
+                        name = "Washington, DC",
+                        subtitle = "US ZIP 20001 · District of Columbia",
+                        latitude = 38.9072,
+                        longitude = -77.0369,
+                        zipCode = "20001",
                         countryCode = "US",
                         isGps = false,
                         sortOrder = 0
@@ -121,7 +121,7 @@ class WeatherRepository @Inject constructor(
             val results = mutableListOf<LocationSearchCandidate>()
             var lastError: Throwable? = null
 
-            // 1. Check if input is a 5-digit US ZIP code (e.g. 21201 or 90210-1234)
+            // 1. Check if input is a 5-digit US ZIP code (e.g. 20001 or 90210-1234)
             if (US_ZIP_REGEX.matches(query)) {
                 val zip5 = query.take(5)
                 runCatching {

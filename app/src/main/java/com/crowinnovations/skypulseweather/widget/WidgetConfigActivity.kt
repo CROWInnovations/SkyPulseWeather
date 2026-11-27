@@ -189,7 +189,7 @@ class WidgetConfigActivity : ComponentActivity() {
                             shape = RoundedCornerShape(14.dp),
                             placeholder = {
                                 Text(
-                                    text = "Add ZIP code (e.g. 21201) or city…",
+                                    text = "Add ZIP code (e.g. 20001) or city…",
                                     maxLines = 1,
                                     softWrap = false,
                                     overflow = TextOverflow.Ellipsis
