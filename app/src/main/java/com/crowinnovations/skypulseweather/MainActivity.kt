@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
                     onFullScreenTempTextColorSelect = viewModel::setFullScreenTempTextColorArgb,
                     onAdjustForecastTransparency = viewModel::adjustForecastTransparencyDelta,
                     onForecastBackingToneSelect = viewModel::setForecastBackingTone,
-                    onAdjustForecastFontBoost = viewModel::adjustForecastFontBoost,
+                    onAdjustForecastFontSize = viewModel::adjustForecastFontSize,
                     onWidgetShowTimeSelect = viewModel::setWidgetShowTimeDisplay,
                     onWidgetDatePositionSelect = viewModel::setWidgetDateDisplayPosition,
                     onAdjustWidgetTimeFontSize = viewModel::adjustWidgetTimeFontSize,
@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
                     onAdjustWidgetTempFontSize = viewModel::adjustWidgetTempFontSize,
                     onWidgetTempFontStyleSelect = viewModel::setWidgetTempFontStyle,
                     onWidgetTempTextColorSelect = viewModel::setWidgetTempTextColorArgb,
-                    onAdjustWidgetDataFontDelta = viewModel::adjustWidgetDataFontDelta,
+                    onAdjustWidgetDataFontSize = viewModel::adjustWidgetDataFontSize,
                     onAdjustWidgetSliderTransparency = viewModel::adjustWidgetSliderTransparencyDelta,
                     onWidgetSliderBackingToneSelect = viewModel::setWidgetSliderBackingTone,
                     onGatewaySave = viewModel::setGatewayBaseUrl

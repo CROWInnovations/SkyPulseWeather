@@ -418,25 +418,25 @@ fun SettingsDialog(
     // Full Screen Display callbacks
     onFullScreenShowTimeSelect: (Boolean) -> Unit,
     onFullScreenDatePositionSelect: (DateDisplayPosition) -> Unit,
-    onAdjustFullScreenTimeFontSize: (Int) -> Unit,
+    onAdjustFullScreenTimeFontSize: (Float) -> Unit,
     onFullScreenTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
     onFullScreenTimeTextColorSelect: (Int) -> Unit,
-    onAdjustFullScreenTempFontSize: (Int) -> Unit,
+    onAdjustFullScreenTempFontSize: (Float) -> Unit,
     onFullScreenTempFontStyleSelect: (DisplayFontStyle) -> Unit,
     onFullScreenTempTextColorSelect: (Int) -> Unit,
     onAdjustForecastTransparency: (Int) -> Unit = {},
     onForecastBackingToneSelect: (BackingTone) -> Unit = {},
-    onAdjustForecastFontBoost: (Int) -> Unit = {},
+    onAdjustForecastFontSize: (Float) -> Unit = {},
     // Widget Display callbacks
     onWidgetShowTimeSelect: (Boolean) -> Unit,
     onWidgetDatePositionSelect: (DateDisplayPosition) -> Unit,
-    onAdjustWidgetTimeFontSize: (Int) -> Unit,
+    onAdjustWidgetTimeFontSize: (Float) -> Unit,
     onWidgetTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
     onWidgetTimeTextColorSelect: (Int) -> Unit,
-    onAdjustWidgetTempFontSize: (Int) -> Unit,
+    onAdjustWidgetTempFontSize: (Float) -> Unit,
     onWidgetTempFontStyleSelect: (DisplayFontStyle) -> Unit,
     onWidgetTempTextColorSelect: (Int) -> Unit,
-    onAdjustWidgetDataFontDelta: (Int) -> Unit = {},
+    onAdjustWidgetDataFontSize: (Float) -> Unit = {},
     onAdjustWidgetSliderTransparency: (Int) -> Unit = {},
     onWidgetSliderBackingToneSelect: (BackingTone) -> Unit = {},
     onGatewaySave: (String) -> Unit,
@@ -655,16 +655,15 @@ fun SettingsDialog(
                                 )
                             }
                             CompactSettingRow(label = "Font Size") {
-                                val boost = preferences.forecastFontBoostSp
-                                FontBoostStepper(
-                                    currentLabel = if (boost == 0) "Default" else "+${boost}sp",
-                                    canDecrease = boost > UserPreferencesRepository.MIN_FORECAST_FONT_BOOST_SP,
-                                    canIncrease = boost < UserPreferencesRepository.MAX_FORECAST_FONT_BOOST_SP,
+                                FontSizeStepper(
+                                    currentSp = preferences.forecastFontSizeSp,
+                                    canDecrease = preferences.forecastFontSizeSp > UserPreferencesRepository.MIN_FORECAST_FONT_SP + 0.01f,
+                                    canIncrease = preferences.forecastFontSizeSp < UserPreferencesRepository.MAX_FORECAST_FONT_SP - 0.01f,
                                     onDecrease = {
-                                        onAdjustForecastFontBoost(-UserPreferencesRepository.FORECAST_FONT_BOOST_STEP_SP)
+                                        onAdjustForecastFontSize(-UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                     },
                                     onIncrease = {
-                                        onAdjustForecastFontBoost(UserPreferencesRepository.FORECAST_FONT_BOOST_STEP_SP)
+                                        onAdjustForecastFontSize(UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                     }
                                 )
                             }
@@ -674,13 +673,13 @@ fun SettingsDialog(
                             CompactSettingRow(label = "Font Size") {
                                 FontSizeStepper(
                                     currentSp = preferences.fullScreenTempFontSizeSp,
-                                    canDecrease = preferences.fullScreenTempFontSizeSp > UserPreferencesRepository.MIN_FULL_SCREEN_TEMP_FONT_SP,
-                                    canIncrease = preferences.fullScreenTempFontSizeSp < UserPreferencesRepository.MAX_FULL_SCREEN_TEMP_FONT_SP,
+                                    canDecrease = preferences.fullScreenTempFontSizeSp > UserPreferencesRepository.MIN_FULL_SCREEN_TEMP_FONT_SP + 0.01f,
+                                    canIncrease = preferences.fullScreenTempFontSizeSp < UserPreferencesRepository.MAX_FULL_SCREEN_TEMP_FONT_SP - 0.01f,
                                     onDecrease = {
-                                        onAdjustFullScreenTempFontSize(-UserPreferencesRepository.FULL_SCREEN_TEMP_FONT_STEP_SP)
+                                        onAdjustFullScreenTempFontSize(-UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                     },
                                     onIncrease = {
-                                        onAdjustFullScreenTempFontSize(UserPreferencesRepository.FULL_SCREEN_TEMP_FONT_STEP_SP)
+                                        onAdjustFullScreenTempFontSize(UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                     }
                                 )
                             }
@@ -729,13 +728,13 @@ fun SettingsDialog(
                                     CompactSettingRow(label = "Font Size") {
                                         FontSizeStepper(
                                             currentSp = preferences.fullScreenTimeFontSizeSp,
-                                            canDecrease = preferences.fullScreenTimeFontSizeSp > UserPreferencesRepository.MIN_TIME_FONT_SP,
-                                            canIncrease = preferences.fullScreenTimeFontSizeSp < UserPreferencesRepository.MAX_TIME_FONT_SP,
+                                            canDecrease = preferences.fullScreenTimeFontSizeSp > UserPreferencesRepository.MIN_TIME_FONT_SP + 0.01f,
+                                            canIncrease = preferences.fullScreenTimeFontSizeSp < UserPreferencesRepository.MAX_TIME_FONT_SP - 0.01f,
                                             onDecrease = {
-                                                onAdjustFullScreenTimeFontSize(-UserPreferencesRepository.TIME_FONT_STEP_SP)
+                                                onAdjustFullScreenTimeFontSize(-UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                             },
                                             onIncrease = {
-                                                onAdjustFullScreenTimeFontSize(UserPreferencesRepository.TIME_FONT_STEP_SP)
+                                                onAdjustFullScreenTimeFontSize(UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                             }
                                         )
                                     }
@@ -774,16 +773,15 @@ fun SettingsDialog(
 
                         SettingsGroupCard(title = "WIDGET · 10-DAY SLIDER & DATA", hairline = hairline) {
                             CompactSettingRow(label = "Font Size") {
-                                val wBoost = preferences.widgetDataFontDeltaSp
-                                FontBoostStepper(
-                                    currentLabel = if (wBoost == 0) "Default" else "+${wBoost}sp",
-                                    canDecrease = wBoost > UserPreferencesRepository.MIN_WIDGET_DATA_FONT_DELTA_SP,
-                                    canIncrease = wBoost < UserPreferencesRepository.MAX_WIDGET_DATA_FONT_DELTA_SP,
+                                FontSizeStepper(
+                                    currentSp = preferences.widgetDataFontSizeSp,
+                                    canDecrease = preferences.widgetDataFontSizeSp > UserPreferencesRepository.MIN_WIDGET_DATA_FONT_SP + 0.01f,
+                                    canIncrease = preferences.widgetDataFontSizeSp < UserPreferencesRepository.MAX_WIDGET_DATA_FONT_SP - 0.01f,
                                     onDecrease = {
-                                        onAdjustWidgetDataFontDelta(-UserPreferencesRepository.WIDGET_DATA_FONT_DELTA_STEP_SP)
+                                        onAdjustWidgetDataFontSize(-UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                     },
                                     onIncrease = {
-                                        onAdjustWidgetDataFontDelta(UserPreferencesRepository.WIDGET_DATA_FONT_DELTA_STEP_SP)
+                                        onAdjustWidgetDataFontSize(UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                     }
                                 )
                             }
@@ -823,13 +821,13 @@ fun SettingsDialog(
                             CompactSettingRow(label = "Font Size") {
                                 FontSizeStepper(
                                     currentSp = preferences.widgetTempFontSizeSp,
-                                    canDecrease = preferences.widgetTempFontSizeSp > UserPreferencesRepository.MIN_WIDGET_TEMP_FONT_SP,
-                                    canIncrease = preferences.widgetTempFontSizeSp < UserPreferencesRepository.MAX_WIDGET_TEMP_FONT_SP,
+                                    canDecrease = preferences.widgetTempFontSizeSp > UserPreferencesRepository.MIN_WIDGET_TEMP_FONT_SP + 0.01f,
+                                    canIncrease = preferences.widgetTempFontSizeSp < UserPreferencesRepository.MAX_WIDGET_TEMP_FONT_SP - 0.01f,
                                     onDecrease = {
-                                        onAdjustWidgetTempFontSize(-UserPreferencesRepository.WIDGET_TEMP_FONT_STEP_SP)
+                                        onAdjustWidgetTempFontSize(-UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                     },
                                     onIncrease = {
-                                        onAdjustWidgetTempFontSize(UserPreferencesRepository.WIDGET_TEMP_FONT_STEP_SP)
+                                        onAdjustWidgetTempFontSize(UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                     }
                                 )
                             }
@@ -878,13 +876,13 @@ fun SettingsDialog(
                                     CompactSettingRow(label = "Font Size") {
                                         FontSizeStepper(
                                             currentSp = preferences.widgetTimeFontSizeSp,
-                                            canDecrease = preferences.widgetTimeFontSizeSp > UserPreferencesRepository.MIN_TIME_FONT_SP,
-                                            canIncrease = preferences.widgetTimeFontSizeSp < UserPreferencesRepository.MAX_TIME_FONT_SP,
+                                            canDecrease = preferences.widgetTimeFontSizeSp > UserPreferencesRepository.MIN_TIME_FONT_SP + 0.01f,
+                                            canIncrease = preferences.widgetTimeFontSizeSp < UserPreferencesRepository.MAX_TIME_FONT_SP - 0.01f,
                                             onDecrease = {
-                                                onAdjustWidgetTimeFontSize(-UserPreferencesRepository.TIME_FONT_STEP_SP)
+                                                onAdjustWidgetTimeFontSize(-UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                             },
                                             onIncrease = {
-                                                onAdjustWidgetTimeFontSize(UserPreferencesRepository.TIME_FONT_STEP_SP)
+                                                onAdjustWidgetTimeFontSize(UserPreferencesRepository.FONT_SIZE_STEP_SP)
                                             }
                                         )
                                     }
@@ -1687,16 +1685,25 @@ private fun HoneycombColorPickerDialog(
     }
 }
 
+internal fun formatFontSpLabel(sp: Float): String {
+    val twice = (sp * 2f).roundToInt()
+    return if (twice % 2 == 0) {
+        "${twice / 2}sp"
+    } else {
+        String.format(java.util.Locale.US, "%.1fsp", twice / 2f)
+    }
+}
+
 @Composable
 private fun FontSizeStepper(
-    currentSp: Int,
+    currentSp: Float,
     canDecrease: Boolean,
     canIncrease: Boolean,
     onDecrease: () -> Unit,
     onIncrease: () -> Unit
 ) {
     FontBoostStepper(
-        currentLabel = "${currentSp}sp",
+        currentLabel = formatFontSpLabel(currentSp),
         canDecrease = canDecrease,
         canIncrease = canIncrease,
         onDecrease = onDecrease,
@@ -1760,7 +1767,7 @@ private fun FontBoostStepper(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
-            modifier = Modifier.widthIn(min = 46.dp)
+            modifier = Modifier.widthIn(min = 52.dp)
         )
 
         Box(

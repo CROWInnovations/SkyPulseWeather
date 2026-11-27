@@ -315,7 +315,7 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun adjustFullScreenTimeFontSize(deltaSp: Int) {
+    fun adjustFullScreenTimeFontSize(deltaSp: Float) {
         viewModelScope.launch {
             prefsRepository.adjustFullScreenTimeFontSize(deltaSp)
         }
@@ -333,7 +333,7 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun adjustFullScreenTempFontSize(deltaSp: Int) {
+    fun adjustFullScreenTempFontSize(deltaSp: Float) {
         viewModelScope.launch {
             prefsRepository.adjustFullScreenTempFontSize(deltaSp)
         }
@@ -363,9 +363,9 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun adjustForecastFontBoost(deltaSp: Int) {
+    fun adjustForecastFontSize(deltaSp: Float) {
         viewModelScope.launch {
-            prefsRepository.adjustForecastFontBoost(deltaSp)
+            prefsRepository.adjustForecastFontSize(deltaSp)
         }
     }
 
@@ -384,7 +384,7 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun adjustWidgetTimeFontSize(deltaSp: Int) {
+    fun adjustWidgetTimeFontSize(deltaSp: Float) {
         viewModelScope.launch {
             prefsRepository.adjustWidgetTimeFontSize(deltaSp)
             repository.notifyWidgetsChanged()
@@ -405,7 +405,7 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun adjustWidgetTempFontSize(deltaSp: Int) {
+    fun adjustWidgetTempFontSize(deltaSp: Float) {
         viewModelScope.launch {
             prefsRepository.adjustWidgetTempFontSize(deltaSp)
             repository.notifyWidgetsChanged()
@@ -426,9 +426,9 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun adjustWidgetDataFontDelta(deltaSp: Int) {
+    fun adjustWidgetDataFontSize(deltaSp: Float) {
         viewModelScope.launch {
-            prefsRepository.adjustWidgetDataFontDelta(deltaSp)
+            prefsRepository.adjustWidgetDataFontSize(deltaSp)
             repository.notifyWidgetsChanged()
         }
     }

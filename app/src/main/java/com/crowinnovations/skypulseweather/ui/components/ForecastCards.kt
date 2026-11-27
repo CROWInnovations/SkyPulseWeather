@@ -138,7 +138,7 @@ fun HeroWeatherSection(
     snapshot: WeatherSnapshot,
     tempUnit: TempUnit,
     windUnit: WindUnit = WindUnit.MPH,
-    tempFontSizeSp: Int = UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_SP,
+    tempFontSizeSp: Float = UserPreferencesRepository.DEFAULT_FULL_SCREEN_TEMP_FONT_SP,
     tempFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
     tempTextColorArgb: Int = DisplayTextColor.WHITE.argb,
     palette: SkyPalette,
@@ -159,11 +159,11 @@ fun HeroWeatherSection(
         blurRadius = 14f
     )
     val safeTempPrefSp = tempFontSizeSp.safeClamp(
-        UserPreferencesRepository.MIN_WIDGET_TEMP_FONT_SP,
-        UserPreferencesRepository.MAX_WIDGET_TEMP_FONT_SP
+        UserPreferencesRepository.MIN_FULL_SCREEN_TEMP_FONT_SP,
+        UserPreferencesRepository.MAX_FULL_SCREEN_TEMP_FONT_SP
     )
-    val heroMaxSp = (safeTempPrefSp * 2.35f).safeClamp(58f, 176f).sp
-    val heroMinSp = (safeTempPrefSp * 0.90f).safeClamp(24f, 64f).sp
+    val heroMaxSp = (safeTempPrefSp * 2.35f).safeClamp(44f, 176f).sp
+    val heroMinSp = (safeTempPrefSp * 0.90f).safeClamp(18f, 64f).sp
     val heroFontFamily = when (tempFontStyle) {
         DisplayFontStyle.SERIF -> FontFamily.Serif
         DisplayFontStyle.MONO -> FontFamily.Monospace
@@ -363,42 +363,36 @@ fun HourlyForecastCard(
     palette: SkyPalette,
     transparencyDeltaPct: Int = 0,
     backingTone: BackingTone = BackingTone.DEFAULT,
-    fontBoostSp: Int = 0,
+    fontSizeSp: Float = UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP,
     modifier: Modifier = Modifier
 ) {
     if (hourly.isEmpty()) return
 
-    val safeBoost = fontBoostSp.safeClamp(
-        UserPreferencesRepository.MIN_FORECAST_FONT_BOOST_SP,
-        UserPreferencesRepository.MAX_FORECAST_FONT_BOOST_SP
+    val safeFontSp = fontSizeSp.safeClamp(
+        UserPreferencesRepository.MIN_FORECAST_FONT_SP,
+        UserPreferencesRepository.MAX_FORECAST_FONT_SP
     )
+    val deltaSp = safeFontSp - UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP
     val effPalette = resolveEffectiveForecastPalette(palette, transparencyDeltaPct, backingTone)
     val pillAlpha = if (transparencyDeltaPct < 0) 0.22f else 0.14f
-    val headerStyle = if (safeBoost == 0) {
-        MaterialTheme.typography.labelMedium
-    } else {
-        MaterialTheme.typography.labelMedium.copy(fontSize = (12f + minOf(safeBoost, 4) * 0.45f).sp)
-    }
-    val subHeaderStyle = if (safeBoost == 0) {
-        MaterialTheme.typography.labelSmall
-    } else {
-        MaterialTheme.typography.labelSmall.copy(fontSize = (11f + minOf(safeBoost, 3) * 0.35f).sp)
-    }
-    val hourTextStyle = if (safeBoost == 0) {
-        MaterialTheme.typography.labelSmall
-    } else {
-        MaterialTheme.typography.labelSmall.copy(fontSize = (11f + safeBoost).sp)
-    }
-    val precipTextStyle = if (safeBoost == 0) {
-        MaterialTheme.typography.labelSmall
-    } else {
-        MaterialTheme.typography.labelSmall.copy(fontSize = (11f + safeBoost * 0.8f).sp)
-    }
-    val tempTextStyle = if (safeBoost == 0) {
-        MaterialTheme.typography.titleSmall
-    } else {
-        MaterialTheme.typography.titleSmall.copy(fontSize = (14f + safeBoost).sp)
-    }
+    val headerStyle = MaterialTheme.typography.labelMedium.copy(
+        fontSize = (12f + deltaSp.safeClamp(-4f, 4f) * 0.45f).coerceAtLeast(9f).sp
+    )
+    val subHeaderStyle = MaterialTheme.typography.labelSmall.copy(
+        fontSize = (11f + deltaSp.safeClamp(-3f, 3f) * 0.35f).coerceAtLeast(8.5f).sp
+    )
+    val hourTextStyle = MaterialTheme.typography.labelSmall.copy(
+        fontSize = (11f + deltaSp).coerceAtLeast(6.5f).sp
+    )
+    val precipTextStyle = MaterialTheme.typography.labelSmall.copy(
+        fontSize = (11f + deltaSp * 0.85f).coerceAtLeast(6.5f).sp
+    )
+    val tempTextStyle = MaterialTheme.typography.titleSmall.copy(
+        fontSize = (14f + deltaSp).coerceAtLeast(8.5f).sp
+    )
+    val pillMinWidthDp = (60f + deltaSp * 4.5f).coerceAtLeast(44f).dp
+    val pillMinHeightDp = (78f + deltaSp * 5.5f).coerceAtLeast(56f).dp
+    val iconSizeDp = (27f + deltaSp * 0.9f).coerceAtLeast(18f).dp
 
     GlassCard(
         palette = effPalette,
@@ -443,8 +437,8 @@ fun HourlyForecastCard(
                 items(hourly, key = { it.isoTime }) { item ->
                     Column(
                         modifier = Modifier
-                            .widthIn(min = (60 + safeBoost * 5).dp)
-                            .heightIn(min = (78 + safeBoost * 6).dp)
+                            .widthIn(min = pillMinWidthDp)
+                            .heightIn(min = pillMinHeightDp)
                             .clip(RoundedCornerShape(14.dp))
                             .background(effPalette.cardBorder.copy(alpha = pillAlpha))
                             .padding(horizontal = 8.dp, vertical = 5.dp),
@@ -462,7 +456,7 @@ fun HourlyForecastCard(
                         WeatherIllustration(
                             condition = item.condition,
                             isDay = item.isDay,
-                            size = (27 + safeBoost).dp
+                            size = iconSizeDp
                         )
 
                         SingleLineText(
@@ -494,16 +488,17 @@ fun FiveDayForecastCard(
     palette: SkyPalette,
     transparencyDeltaPct: Int = 0,
     backingTone: BackingTone = BackingTone.DEFAULT,
-    fontBoostSp: Int = 0,
+    fontSizeSp: Float = UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP,
     modifier: Modifier = Modifier
 ) {
     val tenDays = daily.take(10)
     if (tenDays.isEmpty()) return
 
-    val safeBoost = fontBoostSp.safeClamp(
-        UserPreferencesRepository.MIN_FORECAST_FONT_BOOST_SP,
-        UserPreferencesRepository.MAX_FORECAST_FONT_BOOST_SP
+    val safeFontSp = fontSizeSp.safeClamp(
+        UserPreferencesRepository.MIN_FORECAST_FONT_SP,
+        UserPreferencesRepository.MAX_FORECAST_FONT_SP
     )
+    val deltaSp = safeFontSp - UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP
     val effPalette = resolveEffectiveForecastPalette(palette, transparencyDeltaPct, backingTone)
     val overallMin = tenDays.minOf { it.lowCelsius }
     val overallMax = tenDays.maxOf { it.highCelsius }
@@ -511,19 +506,23 @@ fun FiveDayForecastCard(
     val fontScaleFactor = LocalDensity.current.fontScale.safeClamp(1f, 1.35f)
     val hasAnyHighPrecipDay = tenDays.any { it.showRainPercentBesideCloud }
     val headerLabel = if (tenDays.size > 5) "${tenDays.size}-DAY FORECAST" else "5-DAY FORECAST"
-    val headerStyle = if (safeBoost == 0) {
-        MaterialTheme.typography.labelMedium
-    } else {
-        MaterialTheme.typography.labelMedium.copy(fontSize = (12f + minOf(safeBoost, 4) * 0.4f).sp)
-    }
-    val subHeaderStyle = if (safeBoost == 0) {
-        MaterialTheme.typography.labelSmall
-    } else {
-        MaterialTheme.typography.labelSmall.copy(fontSize = (11f + minOf(safeBoost, 2) * 0.35f).sp)
-    }
-    val hiLoMaxSp = (14f + safeBoost).sp
-    val precipMaxSp = (11f + safeBoost * 0.8f).sp
-    val dateMaxSp = (11.8f + safeBoost).sp
+    val headerStyle = MaterialTheme.typography.labelMedium.copy(
+        fontSize = (12f + deltaSp.safeClamp(-4f, 4f) * 0.4f).coerceAtLeast(9f).sp
+    )
+    val subHeaderStyle = MaterialTheme.typography.labelSmall.copy(
+        fontSize = (11f + deltaSp.safeClamp(-3f, 2f) * 0.35f).coerceAtLeast(8.5f).sp
+    )
+    val hiLoMaxFloat = (14f + deltaSp).coerceAtLeast(8.5f)
+    val precipMaxFloat = (11f + deltaSp * 0.85f).coerceAtLeast(6.5f)
+    val dateMaxFloat = (11.8f + deltaSp).coerceAtLeast(7.0f)
+    val hiLoMaxSp = hiLoMaxFloat.sp
+    val hiLoMinSp = minOf(10f, hiLoMaxFloat).sp
+    val precipMaxSp = precipMaxFloat.sp
+    val precipMinSp = minOf(8.5f, precipMaxFloat).sp
+    val dateMaxSp = dateMaxFloat.sp
+    val dateMinSp = minOf(8.5f, dateMaxFloat).sp
+    val rowMinHeightDp = (34f + deltaSp * 2.8f).coerceAtLeast(22f).dp
+    val trackHeightDp = (5f + deltaSp * 0.4f).coerceAtLeast(3.5f).dp
 
     GlassCard(
         palette = effPalette,
@@ -533,13 +532,13 @@ fun FiveDayForecastCard(
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val rowWidthDp = maxWidth.value.coerceAtLeast(220f)
-            val rawDateW = (68f + safeBoost * 4.5f) * fontScaleFactor
+            val rawDateW = (68f + deltaSp * 4.5f).coerceAtLeast(46f) * fontScaleFactor
             val rawIconW = if (hasAnyHighPrecipDay) {
-                (58f + safeBoost * 3.1f) * fontScaleFactor
+                (58f + deltaSp * 3.1f).coerceAtLeast(40f) * fontScaleFactor
             } else {
-                28f + safeBoost * 0.9f
+                (28f + deltaSp * 0.9f).coerceAtLeast(20f)
             }
-            val rawRightW = (86f + safeBoost * 4.5f) * fontScaleFactor
+            val rawRightW = (86f + deltaSp * 4.5f).coerceAtLeast(56f) * fontScaleFactor
             val minBarAndGaps = if (rowWidthDp >= 310f) 34f else 22f
             val maxCombinedCols = (rowWidthDp - minBarAndGaps).coerceAtLeast(180f)
             val rawSum = (rawDateW + rawIconW + rawRightW).coerceAtLeast(1f)
@@ -547,7 +546,7 @@ fun FiveDayForecastCard(
             val dateColWidth = (rawDateW * colScale).dp
             val iconColWidth = (rawIconW * colScale).dp
             val rightColWidth = (rawRightW * colScale).dp
-            val iconSizeDp = ((24f + safeBoost * 0.8f) * colScale.safeClamp(0.75f, 1f)).dp
+            val iconSizeDp = ((24f + deltaSp * 0.8f).coerceAtLeast(16f) * colScale.safeClamp(0.75f, 1f)).dp
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -597,7 +596,7 @@ fun FiveDayForecastCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = (34 + safeBoost * 3).dp)
+                            .heightIn(min = rowMinHeightDp)
                             .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -605,7 +604,7 @@ fun FiveDayForecastCard(
                             text = day.monthDayWeekLabel,
                             color = effPalette.primaryText,
                             maxFontSize = dateMaxSp,
-                            minFontSize = 8.5.sp,
+                            minFontSize = dateMinSp,
                             fontWeight = if (idx == 0) FontWeight.Bold else FontWeight.SemiBold,
                             style = MaterialTheme.typography.labelMedium,
                             modifier = Modifier.width(dateColWidth)
@@ -627,7 +626,7 @@ fun FiveDayForecastCard(
                                     text = "${day.precipProbability.safeClamp(0, 100)}%",
                                     color = effPalette.accent,
                                     maxFontSize = precipMaxSp,
-                                    minFontSize = 8.5.sp,
+                                    minFontSize = precipMinSp,
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.labelSmall,
                                     modifier = Modifier.weight(1f)
@@ -640,7 +639,7 @@ fun FiveDayForecastCard(
                         Canvas(
                             modifier = Modifier
                                 .weight(1f)
-                                .height((5f + safeBoost * 0.45f).dp)
+                                .height(trackHeightDp)
                         ) {
                             val trackW = size.width
                             val trackH = size.height
@@ -680,7 +679,7 @@ fun FiveDayForecastCard(
                                 text = "${hiVal}° / ${loVal}°",
                                 color = effPalette.primaryText,
                                 maxFontSize = hiLoMaxSp,
-                                minFontSize = 10.sp,
+                                minFontSize = hiLoMinSp,
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.labelLarge,
                                 textAlign = TextAlign.End,
@@ -691,7 +690,7 @@ fun FiveDayForecastCard(
                                 text = "Precip:${day.precipProbability.safeClamp(0, 100)}%",
                                 color = effPalette.accent,
                                 maxFontSize = precipMaxSp,
-                                minFontSize = 8.5.sp,
+                                minFontSize = precipMinSp,
                                 fontWeight = FontWeight.SemiBold,
                                 style = MaterialTheme.typography.labelSmall,
                                 textAlign = TextAlign.End,

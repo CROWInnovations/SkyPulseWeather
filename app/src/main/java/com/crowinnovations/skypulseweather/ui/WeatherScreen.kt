@@ -121,24 +121,24 @@ fun WeatherScreen(
     onThemeModeSelect: (com.crowinnovations.skypulseweather.domain.ThemeMode) -> Unit,
     onFullScreenShowTimeSelect: (Boolean) -> Unit,
     onFullScreenDatePositionSelect: (DateDisplayPosition) -> Unit,
-    onAdjustFullScreenTimeFontSize: (Int) -> Unit,
+    onAdjustFullScreenTimeFontSize: (Float) -> Unit,
     onFullScreenTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
     onFullScreenTimeTextColorSelect: (Int) -> Unit,
-    onAdjustFullScreenTempFontSize: (Int) -> Unit,
+    onAdjustFullScreenTempFontSize: (Float) -> Unit,
     onFullScreenTempFontStyleSelect: (DisplayFontStyle) -> Unit,
     onFullScreenTempTextColorSelect: (Int) -> Unit,
     onAdjustForecastTransparency: (Int) -> Unit = {},
     onForecastBackingToneSelect: (BackingTone) -> Unit = {},
-    onAdjustForecastFontBoost: (Int) -> Unit = {},
+    onAdjustForecastFontSize: (Float) -> Unit = {},
     onWidgetShowTimeSelect: (Boolean) -> Unit,
     onWidgetDatePositionSelect: (DateDisplayPosition) -> Unit,
-    onAdjustWidgetTimeFontSize: (Int) -> Unit,
+    onAdjustWidgetTimeFontSize: (Float) -> Unit,
     onWidgetTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
     onWidgetTimeTextColorSelect: (Int) -> Unit,
-    onAdjustWidgetTempFontSize: (Int) -> Unit,
+    onAdjustWidgetTempFontSize: (Float) -> Unit,
     onWidgetTempFontStyleSelect: (DisplayFontStyle) -> Unit,
     onWidgetTempTextColorSelect: (Int) -> Unit,
-    onAdjustWidgetDataFontDelta: (Int) -> Unit = {},
+    onAdjustWidgetDataFontSize: (Float) -> Unit = {},
     onAdjustWidgetSliderTransparency: (Int) -> Unit = {},
     onWidgetSliderBackingToneSelect: (BackingTone) -> Unit = {},
     onGatewaySave: (String) -> Unit
@@ -302,7 +302,7 @@ fun WeatherScreen(
                         tempTextColorArgb = uiState.preferences.fullScreenTempTextColorArgb,
                         forecastTransparencyDeltaPct = uiState.preferences.forecastTransparencyDeltaPct,
                         forecastBackingTone = uiState.preferences.forecastBackingTone,
-                        forecastFontBoostSp = uiState.preferences.forecastFontBoostSp,
+                        forecastFontSizeSp = uiState.preferences.forecastFontSizeSp,
                         palette = pagePalette,
                         onRetry = onRefresh
                     )
@@ -347,7 +347,7 @@ fun WeatherScreen(
                 onFullScreenTempTextColorSelect = onFullScreenTempTextColorSelect,
                 onAdjustForecastTransparency = onAdjustForecastTransparency,
                 onForecastBackingToneSelect = onForecastBackingToneSelect,
-                onAdjustForecastFontBoost = onAdjustForecastFontBoost,
+                onAdjustForecastFontSize = onAdjustForecastFontSize,
                 onWidgetShowTimeSelect = onWidgetShowTimeSelect,
                 onWidgetDatePositionSelect = onWidgetDatePositionSelect,
                 onAdjustWidgetTimeFontSize = onAdjustWidgetTimeFontSize,
@@ -356,7 +356,7 @@ fun WeatherScreen(
                 onAdjustWidgetTempFontSize = onAdjustWidgetTempFontSize,
                 onWidgetTempFontStyleSelect = onWidgetTempFontStyleSelect,
                 onWidgetTempTextColorSelect = onWidgetTempTextColorSelect,
-                onAdjustWidgetDataFontDelta = onAdjustWidgetDataFontDelta,
+                onAdjustWidgetDataFontSize = onAdjustWidgetDataFontSize,
                 onAdjustWidgetSliderTransparency = onAdjustWidgetSliderTransparency,
                 onWidgetSliderBackingToneSelect = onWidgetSliderBackingToneSelect,
                 onGatewaySave = onGatewaySave,
@@ -368,7 +368,7 @@ fun WeatherScreen(
 
 @Composable
 private fun TopCenteredClockBar(
-    fontSizeSp: Int,
+    fontSizeSp: Float,
     fontStylePref: DisplayFontStyle,
     textColorArgb: Int,
     datePosition: DateDisplayPosition
@@ -396,7 +396,9 @@ private fun TopCenteredClockBar(
         UserPreferencesRepository.MIN_TIME_FONT_SP,
         UserPreferencesRepository.MAX_TIME_FONT_SP
     )
-    val belowDateSp = (safeSp * 0.72f).safeClamp(12f, 44f)
+    val clockMinSp = minOf(9f, safeSp).sp
+    val belowDateSp = (safeSp * 0.72f).safeClamp(8f, 44f)
+    val belowMinSp = minOf(8f, belowDateSp).sp
     val clockShadow = Shadow(
         color = Color(0xCC020617),
         offset = Offset(0f, 2f),
@@ -431,7 +433,7 @@ private fun TopCenteredClockBar(
                     text = formattedTime,
                     color = resolvedColor,
                     maxFontSize = safeSp.sp,
-                    minFontSize = 12.sp,
+                    minFontSize = clockMinSp,
                     fontWeight = FontWeight.Bold,
                     style = resolvedTextStyle,
                     textAlign = TextAlign.Center,
@@ -444,7 +446,7 @@ private fun TopCenteredClockBar(
                     text = "$formattedDate   $formattedTime",
                     color = resolvedColor,
                     maxFontSize = safeSp.sp,
-                    minFontSize = 12.sp,
+                    minFontSize = clockMinSp,
                     fontWeight = FontWeight.Bold,
                     style = resolvedTextStyle,
                     textAlign = TextAlign.Center,
@@ -457,7 +459,7 @@ private fun TopCenteredClockBar(
                     text = "$formattedTime   $formattedDate",
                     color = resolvedColor,
                     maxFontSize = safeSp.sp,
-                    minFontSize = 12.sp,
+                    minFontSize = clockMinSp,
                     fontWeight = FontWeight.Bold,
                     style = resolvedTextStyle,
                     textAlign = TextAlign.Center,
@@ -470,7 +472,7 @@ private fun TopCenteredClockBar(
                     text = formattedTime,
                     color = resolvedColor,
                     maxFontSize = safeSp.sp,
-                    minFontSize = 12.sp,
+                    minFontSize = clockMinSp,
                     fontWeight = FontWeight.Bold,
                     style = resolvedTextStyle,
                     textAlign = TextAlign.Center,
@@ -482,7 +484,7 @@ private fun TopCenteredClockBar(
                     text = formattedDate,
                     color = resolvedColor,
                     maxFontSize = belowDateSp.sp,
-                    minFontSize = 11.sp,
+                    minFontSize = belowMinSp,
                     fontWeight = FontWeight.Bold,
                     style = resolvedTextStyle,
                     textAlign = TextAlign.Center,
@@ -739,12 +741,12 @@ private fun LocationForecastPage(
     isRefreshing: Boolean,
     tempUnit: TempUnit,
     windUnit: WindUnit,
-    tempFontSizeSp: Int = UserPreferencesRepository.DEFAULT_FULL_SCREEN_TEMP_FONT_SP,
+    tempFontSizeSp: Float = UserPreferencesRepository.DEFAULT_FULL_SCREEN_TEMP_FONT_SP,
     tempFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
     tempTextColorArgb: Int = DisplayTextColor.WHITE.argb,
     forecastTransparencyDeltaPct: Int = 0,
     forecastBackingTone: BackingTone = BackingTone.DEFAULT,
-    forecastFontBoostSp: Int = 0,
+    forecastFontSizeSp: Float = UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP,
     palette: SkyPalette,
     onRetry: () -> Unit
 ) {
@@ -830,7 +832,7 @@ private fun LocationForecastPage(
                         palette = palette,
                         transparencyDeltaPct = forecastTransparencyDeltaPct,
                         backingTone = forecastBackingTone,
-                        fontBoostSp = forecastFontBoostSp
+                        fontSizeSp = forecastFontSizeSp
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Spacer(modifier = Modifier.weight(1f))
@@ -840,7 +842,7 @@ private fun LocationForecastPage(
                         palette = palette,
                         transparencyDeltaPct = forecastTransparencyDeltaPct,
                         backingTone = forecastBackingTone,
-                        fontBoostSp = forecastFontBoostSp
+                        fontSizeSp = forecastFontSizeSp
                     )
                 }
             }
@@ -876,7 +878,7 @@ private fun LocationForecastPage(
                     palette = palette,
                     transparencyDeltaPct = forecastTransparencyDeltaPct,
                     backingTone = forecastBackingTone,
-                    fontBoostSp = forecastFontBoostSp
+                    fontSizeSp = forecastFontSizeSp
                 )
 
                 // Flexible spring aligns the 5-Day Forecast card flush to the bottom of the display screen
@@ -889,7 +891,7 @@ private fun LocationForecastPage(
                     palette = palette,
                     transparencyDeltaPct = forecastTransparencyDeltaPct,
                     backingTone = forecastBackingTone,
-                    fontBoostSp = forecastFontBoostSp
+                    fontSizeSp = forecastFontSizeSp
                 )
             }
         }

@@ -260,12 +260,19 @@ class WeatherDomainTest {
                 assertTrue(moonRWithClock * 2f >= h * 0.44f)
             }
         }
-        assertEquals(74, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_TIME_FONT_SP)
-        assertEquals(74, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_FULL_SCREEN_TEMP_FONT_SP)
-        assertEquals(74, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_TEMP_FONT_SP)
-        assertEquals(10, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_FORECAST_FONT_BOOST_SP)
-        assertEquals(0, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MIN_WIDGET_DATA_FONT_DELTA_SP)
-        assertEquals(5, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_DATA_FONT_DELTA_SP)
+        assertEquals(0.5f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.FONT_SIZE_STEP_SP, 0.001f)
+        assertEquals(74f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_TIME_FONT_SP, 0.001f)
+        assertEquals(74f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_FULL_SCREEN_TEMP_FONT_SP, 0.001f)
+        assertEquals(74f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_TEMP_FONT_SP, 0.001f)
+        assertEquals(7f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MIN_FORECAST_FONT_SP, 0.001f)
+        assertEquals(12f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP, 0.001f)
+        assertEquals(22f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_FORECAST_FONT_SP, 0.001f)
+        assertEquals(7f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MIN_WIDGET_DATA_FONT_SP, 0.001f)
+        assertEquals(12f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP, 0.001f)
+        assertEquals(17f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_DATA_FONT_SP, 0.001f)
+        assertEquals("12sp", com.crowinnovations.skypulseweather.ui.components.formatFontSpLabel(12.0f))
+        assertEquals("12.5sp", com.crowinnovations.skypulseweather.ui.components.formatFontSpLabel(12.5f))
+        assertEquals("11.5sp", com.crowinnovations.skypulseweather.ui.components.formatFontSpLabel(11.5f))
         assertEquals(127, com.crowinnovations.skypulseweather.ui.components.HoneycombColorWheel.wheelCells.size)
         assertEquals(
             "#FFFFFF",
@@ -290,21 +297,21 @@ class WeatherDomainTest {
     fun separatedFullScreenAndWidgetSettingsAndSliderBackingWorkIndependently() {
         val defaults = com.crowinnovations.skypulseweather.data.local.AppPreferences()
         val updatedWidgetOnly = defaults.copy(
-            widgetTempFontSizeSp = 66,
+            widgetTempFontSizeSp = 66.5f,
             widgetTempFontStyle = DisplayFontStyle.SERIF,
             widgetTempTextColorArgb = DisplayTextColor.MINT.argb,
             widgetShowTimeDisplay = true,
             widgetTimeTextColorArgb = DisplayTextColor.GOLD.argb,
-            widgetDataFontDeltaSp = 5,
+            widgetDataFontSizeSp = 9.5f,
             widgetSliderBackingTone = com.crowinnovations.skypulseweather.domain.BackingTone.DARKEN,
             widgetSliderTransparencyDeltaPct = -30
         )
         // Full-screen fields remain completely untouched when widget fields change
-        assertEquals(46, updatedWidgetOnly.fullScreenTempFontSizeSp)
+        assertEquals(46f, updatedWidgetOnly.fullScreenTempFontSizeSp, 0.001f)
         assertEquals(DisplayFontStyle.DEFAULT, updatedWidgetOnly.fullScreenTempFontStyle)
         assertEquals(DisplayTextColor.WHITE.argb, updatedWidgetOnly.fullScreenTempTextColorArgb)
         assertFalse(updatedWidgetOnly.fullScreenShowTimeDisplay)
-        assertEquals(0, updatedWidgetOnly.forecastFontBoostSp)
+        assertEquals(12f, updatedWidgetOnly.forecastFontSizeSp, 0.001f)
 
         // Widget slider backing transparency & tone checks
         val defaultSlider = com.crowinnovations.skypulseweather.widget.resolveWidgetSliderBackingColor(
