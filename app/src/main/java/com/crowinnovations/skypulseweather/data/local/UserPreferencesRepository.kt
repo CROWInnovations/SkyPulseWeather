@@ -61,6 +61,9 @@ data class AppPreferences(
     val widgetTempFontSizeSp: Float = UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_SP,
     val widgetTempFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
     val widgetTempTextColorArgb: Int = DisplayTextColor.WHITE.argb,
+    val widgetDetailsFontSizeSp: Float = UserPreferencesRepository.DEFAULT_WIDGET_DETAILS_FONT_SP,
+    val widgetDetailsTransparencyDeltaPct: Int = UserPreferencesRepository.DEFAULT_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT,
+    val widgetDetailsBackingTone: BackingTone = BackingTone.DEFAULT,
     val widgetForecastDayOffset: Int = 0,
     val widgetDataFontSizeSp: Float = UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP,
     val widgetSliderTransparencyDeltaPct: Int = UserPreferencesRepository.DEFAULT_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT,
@@ -117,6 +120,9 @@ class UserPreferencesRepository @Inject constructor(
         private val KEY_WIDGET_TEMP_FONT_STYLE = stringPreferencesKey("widget_temp_font_style")
         private val KEY_WIDGET_TEMP_TEXT_COLOR = stringPreferencesKey("widget_temp_text_color")
         private val KEY_WIDGET_TEMP_TEXT_COLOR_ARGB = intPreferencesKey("widget_temp_text_color_argb")
+        private val KEY_WIDGET_DETAILS_FONT_SP_F = floatPreferencesKey("widget_details_font_sp_f")
+        private val KEY_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT = intPreferencesKey("widget_details_transparency_delta_pct")
+        private val KEY_WIDGET_DETAILS_BACKING_TONE = stringPreferencesKey("widget_details_backing_tone")
         private val KEY_WIDGET_DAY_OFFSET = intPreferencesKey("widget_forecast_day_offset")
         private val KEY_WIDGET_DATA_FONT_SP_F = floatPreferencesKey("widget_data_font_sp_f")
         private val KEY_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT = intPreferencesKey("widget_slider_transparency_delta_pct")
@@ -152,6 +158,15 @@ class UserPreferencesRepository @Inject constructor(
         const val MIN_FORECAST_FONT_SP = 7.0f
         const val MAX_FORECAST_FONT_SP = 22.0f
         const val DEFAULT_FORECAST_FONT_SP = 12.0f
+
+        const val MIN_WIDGET_DETAILS_FONT_SP = 7.0f
+        const val MAX_WIDGET_DETAILS_FONT_SP = 18.0f
+        const val DEFAULT_WIDGET_DETAILS_FONT_SP = 13.0f
+
+        const val MIN_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT = -60
+        const val MAX_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT = 60
+        const val DEFAULT_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT = 0
+        const val WIDGET_DETAILS_TRANSPARENCY_STEP_PCT = 10
 
         const val MIN_WIDGET_DATA_FONT_SP = 7.0f
         const val MAX_WIDGET_DATA_FONT_SP = 17.0f
@@ -269,7 +284,20 @@ class UserPreferencesRepository @Inject constructor(
         }.getOrDefault(DisplayTextColor.WHITE)
         val widgetTempColorArgb = (prefs[KEY_WIDGET_TEMP_TEXT_COLOR_ARGB] ?: legacyWidgetTempColor.argb) or 0xFF000000.toInt()
 
-        // Widget 10-Day Slider & Data
+        // Widget Details Below Temp (H:/L:, Feels, Sky/Humidity, Wind/UV)
+        val safeWidgetDetailsFontSp = (
+            prefs[KEY_WIDGET_DETAILS_FONT_SP_F]
+                ?: DEFAULT_WIDGET_DETAILS_FONT_SP
+            ).snapHalfSp().safeClamp(MIN_WIDGET_DETAILS_FONT_SP, MAX_WIDGET_DETAILS_FONT_SP)
+        val safeWidgetDetailsTransparency = (
+            prefs[KEY_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT]
+                ?: DEFAULT_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT
+            ).safeClamp(MIN_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT, MAX_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT)
+        val widgetDetailsTone = runCatching {
+            BackingTone.valueOf(prefs[KEY_WIDGET_DETAILS_BACKING_TONE] ?: BackingTone.DEFAULT.name)
+        }.getOrDefault(BackingTone.DEFAULT)
+
+        // Widget 10-Day Forecast Slider
         val safeDayOffset = (prefs[KEY_WIDGET_DAY_OFFSET] ?: 0).safeClamp(0, 5)
         val safeWidgetDataFontSp = (
             prefs[KEY_WIDGET_DATA_FONT_SP_F]
@@ -309,6 +337,9 @@ class UserPreferencesRepository @Inject constructor(
             widgetTempFontSizeSp = safeWidgetTempSp,
             widgetTempFontStyle = widgetTempStyle,
             widgetTempTextColorArgb = widgetTempColorArgb,
+            widgetDetailsFontSizeSp = safeWidgetDetailsFontSp,
+            widgetDetailsTransparencyDeltaPct = safeWidgetDetailsTransparency,
+            widgetDetailsBackingTone = widgetDetailsTone,
             widgetForecastDayOffset = safeDayOffset,
             widgetDataFontSizeSp = safeWidgetDataFontSp,
             widgetSliderTransparencyDeltaPct = safeWidgetSliderTransparency,
@@ -472,7 +503,34 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { it[KEY_WIDGET_TEMP_TEXT_COLOR_ARGB] = argb or 0xFF000000.toInt() }
     }
 
-    // Widget 10-Day Slider & Data setters
+    // Widget Details Below Temp setters
+    suspend fun adjustWidgetDetailsFontSize(deltaSp: Float) {
+        dataStore.edit { prefs ->
+            val current = (prefs[KEY_WIDGET_DETAILS_FONT_SP_F] ?: DEFAULT_WIDGET_DETAILS_FONT_SP)
+                .snapHalfSp()
+                .safeClamp(MIN_WIDGET_DETAILS_FONT_SP, MAX_WIDGET_DETAILS_FONT_SP)
+            prefs[KEY_WIDGET_DETAILS_FONT_SP_F] = (current + deltaSp)
+                .snapHalfSp()
+                .safeClamp(MIN_WIDGET_DETAILS_FONT_SP, MAX_WIDGET_DETAILS_FONT_SP)
+        }
+    }
+
+    suspend fun adjustWidgetDetailsTransparencyDelta(deltaPct: Int) {
+        dataStore.edit { prefs ->
+            val current = (
+                prefs[KEY_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT]
+                    ?: DEFAULT_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT
+                ).safeClamp(MIN_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT, MAX_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT)
+            prefs[KEY_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT] = (current + deltaPct)
+                .safeClamp(MIN_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT, MAX_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT)
+        }
+    }
+
+    suspend fun setWidgetDetailsBackingTone(tone: BackingTone) {
+        dataStore.edit { it[KEY_WIDGET_DETAILS_BACKING_TONE] = tone.name }
+    }
+
+    // Widget 10-Day Slider setters
     suspend fun setWidgetForecastDayOffset(offset: Int) {
         val clamped = offset.safeClamp(0, 5)
         dataStore.edit { it[KEY_WIDGET_DAY_OFFSET] = clamped }

@@ -253,11 +253,16 @@ object WeatherWidgetPublisher {
             1f
         }
         val maxVirtualClockSpCap = (74f / hostResizeRatio).safeClamp(44f, 114f)
-        val safeDataFontSp = prefs.widgetDataFontSizeSp.safeClamp(
+        val safeSliderFontSp = prefs.widgetDataFontSizeSp.safeClamp(
             UserPreferencesRepository.MIN_WIDGET_DATA_FONT_SP,
             UserPreferencesRepository.MAX_WIDGET_DATA_FONT_SP
         )
-        val dataFontDelta = safeDataFontSp - UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP
+        val sliderFontDelta = safeSliderFontSp - UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP
+        val safeDetailsFontSp = prefs.widgetDetailsFontSizeSp.safeClamp(
+            UserPreferencesRepository.MIN_WIDGET_DETAILS_FONT_SP,
+            UserPreferencesRepository.MAX_WIDGET_DETAILS_FONT_SP
+        )
+        val detailsFontDelta = safeDetailsFontSp - UserPreferencesRepository.DEFAULT_WIDGET_DETAILS_FONT_SP
         val sliderBackingColor = resolveWidgetSliderBackingColor(
             tone = prefs.widgetSliderBackingTone,
             transparencyDeltaPct = prefs.widgetSliderTransparencyDeltaPct
@@ -271,7 +276,7 @@ object WeatherWidgetPublisher {
             prefs.widgetDateDisplayPosition == DateDisplayPosition.RIGHT_OF_TIME
         val hasBelowDate = prefs.widgetDateDisplayPosition == DateDisplayPosition.BELOW_TIME
         val is24h = android.text.format.DateFormat.is24HourFormat(context)
-        val stripExtraBoostDp = (dataFontDelta * 2.6f * safeFontScale) / hostResizeRatio
+        val stripExtraBoostDp = (sliderFontDelta * 2.6f * safeFontScale) / hostResizeRatio
         val stripHeightFloat = if (isTall) {
             ((68f / hostResizeRatio).safeClamp(68f, 78f) + stripExtraBoostDp).safeClamp(52f, (hDp * 0.34f).coerceAtLeast(78f))
         } else {
@@ -293,7 +298,7 @@ object WeatherWidgetPublisher {
             else -> {
                 val tenDayOverhead = stripHeightFloat + (if (isTall && model.days.size > 5) 28f else 10f)
                 val alertOverhead = if (isTall && model.alertSummary != null) 28f else 0f
-                val minTelemetryAndHeroH = ((if (isCompactHeight) 98f else 130f) + dataFontDelta * 5.5f).coerceAtLeast(80f)
+                val minTelemetryAndHeroH = ((if (isCompactHeight) 98f else 130f) + detailsFontDelta * 5.5f).coerceAtLeast(80f)
                 val budget = (hDp - topPadFloat * 2f - tenDayOverhead - alertOverhead - minTelemetryAndHeroH)
                     .coerceAtLeast(18f)
                 val rawMax = if (hasBelowDate) {
@@ -350,7 +355,7 @@ object WeatherWidgetPublisher {
         val maxMoonBottomFraction = if (isLargeForecastMode) {
             val tenDayH = stripHeightFloat + (if (isTall && model.days.size > 5) 28f else 10f)
             val alertH = if (isTall && model.alertSummary != null) 29f else 0f
-            val moonPhaseLabelH = if (!model.isDay) (18f + dataFontDelta * 1.4f) else 0f
+            val moonPhaseLabelH = if (!model.isDay) (18f + detailsFontDelta * 1.4f).coerceAtLeast(12f) else 0f
             val maxBottomDp = (hDp - topPadFloat - tenDayH - alertH - moonPhaseLabelH - 6f)
                 .coerceAtLeast(hDp * (topReservedFraction + 0.18f))
             (maxBottomDp / hDp.coerceAtLeast(80f)).safeClamp(topReservedFraction + 0.18f, 0.74f)
@@ -478,7 +483,7 @@ object WeatherWidgetPublisher {
                 days = model.days,
                 stripWidthDp = stripWidthDp,
                 stripHeightDp = stripHeightFloat,
-                dataFontDeltaSp = dataFontDelta,
+                dataFontDeltaSp = sliderFontDelta,
                 primaryTextArgb = sliderPrimaryTextArgb,
                 rainTextArgb = sliderRainTextArgb,
                 hostResizeRatio = hostResizeRatio,
@@ -635,6 +640,31 @@ private fun autoFitWidgetLineSp(
     if (measuredW <= safeAvailW) return targetVirtual
     val scaled = targetVirtual * (safeAvailW / measuredW.coerceAtLeast(1f))
     return scaled.safeClamp(minVirtualSp, safeMax)
+}
+
+internal fun resolveWidgetDetailsBackingColor(
+    tone: BackingTone,
+    transparencyDeltaPct: Int
+): Color {
+    val safeDelta = transparencyDeltaPct.safeClamp(
+        UserPreferencesRepository.MIN_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT,
+        UserPreferencesRepository.MAX_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT
+    )
+    return when (tone) {
+        BackingTone.DEFAULT -> {
+            // Subtle 0% clear sky at Default (delta == 0) unless decreased (-10%..-60%) to add smoked glass backing!
+            val alpha = if (safeDelta >= 0) 0.0f else (-safeDelta / 100f * 1.45f).safeClamp(0.0f, 0.90f)
+            Color(0xFF0B172A).copy(alpha = alpha)
+        }
+        BackingTone.DARKEN -> {
+            val alpha = (0.50f - (safeDelta / 100f)).safeClamp(0.0f, 0.95f)
+            Color(0xFF030712).copy(alpha = alpha)
+        }
+        BackingTone.LIGHTEN -> {
+            val alpha = (0.34f - (safeDelta / 100f)).safeClamp(0.0f, 0.90f)
+            Color(0xFFEFF6FF).copy(alpha = alpha)
+        }
+    }
 }
 
 internal fun resolveWidgetSliderBackingColor(
@@ -974,14 +1004,43 @@ private fun WidgetCardSurface(
 
     val tempScaleRatio = prefs.widgetTempFontSizeSp /
         UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_SP
-    val safeDataFontSp = prefs.widgetDataFontSizeSp.safeClamp(
+    val safeHostRatio = hostResizeRatio.safeClamp(0.65f, 1.25f)
+
+    // Independent 10-Day Slider font delta
+    val safeSliderFontSp = prefs.widgetDataFontSizeSp.safeClamp(
         UserPreferencesRepository.MIN_WIDGET_DATA_FONT_SP,
         UserPreferencesRepository.MAX_WIDGET_DATA_FONT_SP
     )
-    val dataFontDelta = safeDataFontSp - UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP
-    val safeHostRatio = hostResizeRatio.safeClamp(0.65f, 1.25f)
-    val virtualDeltaCapBoost = dataFontDelta / safeHostRatio
-    val minDeltaVirtual = virtualDeltaCapBoost.coerceAtMost(0f)
+    val sliderFontDelta = safeSliderFontSp - UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP
+    val sliderVirtualDeltaBoost = sliderFontDelta / safeHostRatio
+    val sliderMinDeltaVirtual = sliderVirtualDeltaBoost.coerceAtMost(0f)
+
+    // Independent Details Below Temp font delta & backing
+    val safeDetailsFontSp = prefs.widgetDetailsFontSizeSp.safeClamp(
+        UserPreferencesRepository.MIN_WIDGET_DETAILS_FONT_SP,
+        UserPreferencesRepository.MAX_WIDGET_DETAILS_FONT_SP
+    )
+    val detailsFontDelta = safeDetailsFontSp - UserPreferencesRepository.DEFAULT_WIDGET_DETAILS_FONT_SP
+    val detailsVirtualDeltaBoost = detailsFontDelta / safeHostRatio
+    val detailsMinDeltaVirtual = detailsVirtualDeltaBoost.coerceAtMost(0f)
+
+    val detailsBackingColor = resolveWidgetDetailsBackingColor(
+        tone = prefs.widgetDetailsBackingTone,
+        transparencyDeltaPct = prefs.widgetDetailsTransparencyDeltaPct
+    )
+    val hasDetailsBacking = detailsBackingColor.alpha > 0.005f
+    val isLightOpaqueDetails = prefs.widgetDetailsBackingTone == BackingTone.LIGHTEN &&
+        detailsBackingColor.alpha >= 0.45f
+    val detailsPrimaryColor = ColorProvider(
+        if (isLightOpaqueDetails) Color(0xFF0B1324) else Color(0xFFF8FAFC)
+    )
+    val detailsHumidityColor = ColorProvider(
+        if (isLightOpaqueDetails) Color(0xFF0369A1) else Color(0xFFBAE6FD)
+    )
+    val detailsWindUvColor = ColorProvider(
+        if (isLightOpaqueDetails) Color(0xFF1E293B) else Color(0xFFE2E8F0)
+    )
+
     val sliderBackingColor = resolveWidgetSliderBackingColor(
         tone = prefs.widgetSliderBackingTone,
         transparencyDeltaPct = prefs.widgetSliderTransparencyDeltaPct
@@ -1092,9 +1151,9 @@ private fun WidgetCardSurface(
                             context = context,
                             text = model.highLowCompact,
                             availWidthDp = (widthDp - 10f).coerceAtLeast(32f),
-                            desiredPhysicalSp = (10.8f + dataFontDelta * 0.75f).coerceAtLeast(6.5f),
-                            minVirtualSp = (9.8f + minDeltaVirtual * 0.75f).coerceAtLeast(6.0f),
-                            maxVirtualSp = (13.4f + virtualDeltaCapBoost * 0.75f).coerceAtLeast(7.0f),
+                            desiredPhysicalSp = (10.8f + detailsFontDelta * 0.75f).coerceAtLeast(6.5f),
+                            minVirtualSp = (9.8f + detailsMinDeltaVirtual * 0.75f).coerceAtLeast(6.0f),
+                            maxVirtualSp = (13.4f + detailsVirtualDeltaBoost * 0.75f).coerceAtLeast(7.0f),
                             hostResizeRatio = hostResizeRatio,
                             fontScale = fontScale
                         ).sp
@@ -1156,9 +1215,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = chosenStripSub,
                     availWidthDp = stripAvailCityW,
-                    desiredPhysicalSp = (11.4f + dataFontDelta).coerceAtLeast(6.5f),
-                    minVirtualSp = (10.4f + minDeltaVirtual).coerceAtLeast(6.0f),
-                    maxVirtualSp = (14.4f + virtualDeltaCapBoost).coerceAtLeast(7.0f),
+                    desiredPhysicalSp = (11.4f + detailsFontDelta).coerceAtLeast(6.5f),
+                    minVirtualSp = (10.4f + detailsMinDeltaVirtual).coerceAtLeast(6.0f),
+                    maxVirtualSp = (14.4f + detailsVirtualDeltaBoost).coerceAtLeast(7.0f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1231,37 +1290,40 @@ private fun WidgetCardSurface(
                 } else {
                     "${model.conditionOnly} · ${model.humidityLine}"
                 }
+                val sqDetailsPadH = if (hasDetailsBacking) 12f else 0f
+                val sqDetailsPadV = if (hasDetailsBacking) 6f else 0f
+                val sqSafeRowW = (sqFullRowW - sqDetailsPadH).coerceAtLeast(72f)
                 val sqHlSp = autoFitWidgetLineSp(
                     context = context,
                     text = sqHlLineText,
-                    availWidthDp = sqFullRowW,
-                    desiredPhysicalSp = (11.8f + dataFontDelta).coerceAtLeast(6.8f),
-                    minVirtualSp = (10.6f + minDeltaVirtual).coerceAtLeast(6.2f),
-                    maxVirtualSp = (14.8f + virtualDeltaCapBoost).coerceAtLeast(7.2f),
+                    availWidthDp = sqSafeRowW,
+                    desiredPhysicalSp = (11.8f + detailsFontDelta).coerceAtLeast(6.8f),
+                    minVirtualSp = (10.6f + detailsMinDeltaVirtual).coerceAtLeast(6.2f),
+                    maxVirtualSp = (14.8f + detailsVirtualDeltaBoost).coerceAtLeast(7.2f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
                 val sqCondHumSp = autoFitWidgetLineSp(
                     context = context,
                     text = sqCondHumText,
-                    availWidthDp = sqFullRowW,
-                    desiredPhysicalSp = (11.4f + dataFontDelta).coerceAtLeast(6.5f),
-                    minVirtualSp = (10.2f + minDeltaVirtual).coerceAtLeast(6.0f),
-                    maxVirtualSp = (14.2f + virtualDeltaCapBoost).coerceAtLeast(7.0f),
+                    availWidthDp = sqSafeRowW,
+                    desiredPhysicalSp = (11.4f + detailsFontDelta).coerceAtLeast(6.5f),
+                    minVirtualSp = (10.2f + detailsMinDeltaVirtual).coerceAtLeast(6.0f),
+                    maxVirtualSp = (14.2f + detailsVirtualDeltaBoost).coerceAtLeast(7.0f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
                 val sqWindSp = autoFitWidgetLineSp(
                     context = context,
                     text = model.windAndUvLine,
-                    availWidthDp = sqFullRowW,
-                    desiredPhysicalSp = (11.4f + dataFontDelta).coerceAtLeast(6.5f),
-                    minVirtualSp = (10.2f + minDeltaVirtual).coerceAtLeast(6.0f),
-                    maxVirtualSp = (14.2f + virtualDeltaCapBoost).coerceAtLeast(7.0f),
+                    availWidthDp = sqSafeRowW,
+                    desiredPhysicalSp = (11.4f + detailsFontDelta).coerceAtLeast(6.5f),
+                    minVirtualSp = (10.2f + detailsMinDeltaVirtual).coerceAtLeast(6.0f),
+                    maxVirtualSp = (14.2f + detailsVirtualDeltaBoost).coerceAtLeast(7.0f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
-                val sqTelemetryH = ((sqHlSp + sqCondHumSp + (if (sqShowWind) sqWindSp else 0f)) * fontScale * 1.24f) + 4f
+                val sqTelemetryH = ((sqHlSp + sqCondHumSp + (if (sqShowWind) sqWindSp else 0f)) * fontScale * 1.24f) + 4f + sqDetailsPadV
                 val sqAvailH = (heightDp - 12f - sqClockUsedH - 18f - sqTelemetryH - 4f).coerceAtLeast(22f)
                 val sqAvailCityRowW = (widthDp - 42f).coerceAtLeast(72f)
                 val sqMaxCitySp = (13.0f / hostResizeRatio).safeClamp(11.5f, 16.0f)
@@ -1362,12 +1424,21 @@ private fun WidgetCardSurface(
 
                     Spacer(modifier = GlanceModifier.defaultWeight())
 
-                    Column(modifier = GlanceModifier.fillMaxWidth()) {
+                    val sqDetailsModifier = if (hasDetailsBacking) {
+                        GlanceModifier
+                            .fillMaxWidth()
+                            .cornerRadius(11.dp)
+                            .background(ColorProvider(detailsBackingColor))
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    } else {
+                        GlanceModifier.fillMaxWidth()
+                    }
+                    Column(modifier = sqDetailsModifier) {
                         Text(
                             text = sqHlLineText,
                             maxLines = 1,
                             style = TextStyle(
-                                color = primaryColor,
+                                color = detailsPrimaryColor,
                                 fontSize = sqHlSp.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -1376,7 +1447,7 @@ private fun WidgetCardSurface(
                             text = sqCondHumText,
                             maxLines = 1,
                             style = TextStyle(
-                                color = humidityColor,
+                                color = detailsHumidityColor,
                                 fontSize = sqCondHumSp.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -1386,7 +1457,7 @@ private fun WidgetCardSurface(
                                 text = model.windAndUvLine,
                                 maxLines = 1,
                                 style = TextStyle(
-                                    color = windUvColor,
+                                    color = detailsWindUvColor,
                                     fontSize = sqWindSp.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -1435,7 +1506,7 @@ private fun WidgetCardSurface(
                     .safeClamp(11.0f, maxCitySpCap)
                 val locNameSp = locNameSpFloat.sp
 
-                val stripExtraBoostDp = (dataFontDelta * 2.6f * fontScale) / safeHostRatio
+                val stripExtraBoostDp = (sliderFontDelta * 2.6f * fontScale) / safeHostRatio
                 val stripHeightFloat = if (isTall) {
                     ((68f / hostResizeRatio).safeClamp(68f, 78f) + stripExtraBoostDp)
                         .safeClamp(52f, (heightDp * 0.34f).coerceAtLeast(78f))
@@ -1449,7 +1520,7 @@ private fun WidgetCardSurface(
                     0f
                 }
                 val alertOverhead = if (isTall && model.alertSummary != null) {
-                    (28f + dataFontDelta * 0.9f).coerceAtLeast(22f)
+                    (28f + detailsFontDelta * 0.9f).coerceAtLeast(22f)
                 } else {
                     0f
                 }
@@ -1473,14 +1544,16 @@ private fun WidgetCardSurface(
                 } else {
                     "${model.conditionOnly} · ${model.humidityLine}"
                 }
-                val safeTelemetryAvailW = (telemetryWidthFloat - 6f).coerceAtLeast(72f)
+                val detailsBoxPadH = if (hasDetailsBacking) 14f else 0f
+                val detailsBoxPadV = if (hasDetailsBacking) 6f else 0f
+                val safeTelemetryAvailW = (telemetryWidthFloat - 6f - detailsBoxPadH).coerceAtLeast(64f)
                 val hlPrimarySpFloat = autoFitWidgetLineSp(
                     context = context,
                     text = hlPrimaryLineText,
                     availWidthDp = safeTelemetryAvailW,
-                    desiredPhysicalSp = ((if (isTall) 13.4f else 12.2f) + dataFontDelta).coerceAtLeast(7.0f),
-                    minVirtualSp = (10.4f + minDeltaVirtual).coerceAtLeast(6.5f),
-                    maxVirtualSp = ((if (isTall) 16.8f else 15.2f) + virtualDeltaCapBoost).coerceAtLeast(7.5f),
+                    desiredPhysicalSp = ((if (isTall) 13.4f else 12.2f) + detailsFontDelta).coerceAtLeast(7.0f),
+                    minVirtualSp = (10.4f + detailsMinDeltaVirtual).coerceAtLeast(6.5f),
+                    maxVirtualSp = ((if (isTall) 16.8f else 15.2f) + detailsVirtualDeltaBoost).coerceAtLeast(7.5f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1488,9 +1561,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = condHumidityLineText,
                     availWidthDp = safeTelemetryAvailW,
-                    desiredPhysicalSp = ((if (isTall) 12.8f else 11.6f) + dataFontDelta).coerceAtLeast(6.8f),
-                    minVirtualSp = (9.8f + minDeltaVirtual).coerceAtLeast(6.2f),
-                    maxVirtualSp = ((if (isTall) 15.8f else 14.4f) + virtualDeltaCapBoost).coerceAtLeast(7.2f),
+                    desiredPhysicalSp = ((if (isTall) 12.8f else 11.6f) + detailsFontDelta).coerceAtLeast(6.8f),
+                    minVirtualSp = (9.8f + detailsMinDeltaVirtual).coerceAtLeast(6.2f),
+                    maxVirtualSp = ((if (isTall) 15.8f else 14.4f) + detailsVirtualDeltaBoost).coerceAtLeast(7.2f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1498,15 +1571,15 @@ private fun WidgetCardSurface(
                     context = context,
                     text = model.windAndUvLine,
                     availWidthDp = safeTelemetryAvailW,
-                    desiredPhysicalSp = ((if (isTall) 12.8f else 11.8f) + dataFontDelta).coerceAtLeast(6.8f),
-                    minVirtualSp = (10.0f + minDeltaVirtual).coerceAtLeast(6.2f),
-                    maxVirtualSp = ((if (isTall) 15.8f else 14.6f) + virtualDeltaCapBoost).coerceAtLeast(7.2f),
+                    desiredPhysicalSp = ((if (isTall) 12.8f else 11.8f) + detailsFontDelta).coerceAtLeast(6.8f),
+                    minVirtualSp = (10.0f + detailsMinDeltaVirtual).coerceAtLeast(6.2f),
+                    maxVirtualSp = ((if (isTall) 15.8f else 14.6f) + detailsVirtualDeltaBoost).coerceAtLeast(7.2f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
 
                 val lowerTelemetryOverhead = ((hlPrimarySpFloat + condHumiditySpFloat +
-                    (if (showWindLine) windUvSpFloat else 0f)) * fontScale * 1.38f) + 9f
+                    (if (showWindLine) windUvSpFloat else 0f)) * fontScale * 1.38f) + 9f + detailsBoxPadV
                 val cityHeaderOverhead = (locNameSpFloat * fontScale * 1.34f) + 6f
 
                 val stageAvailableHeightDp = (heightDp - topPadFloat - 4f - clockOverhead -
@@ -1552,9 +1625,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = model.moonPhase.phaseName,
                     availWidthDp = (rightSpaceFloat - 4f).coerceAtLeast(72f),
-                    desiredPhysicalSp = ((if (isTall) 11.8f else 10.8f) + dataFontDelta * 0.75f).coerceAtLeast(6.5f),
-                    minVirtualSp = ((if (isCompactHeight) 9.8f else 11.0f) + minDeltaVirtual * 0.75f).coerceAtLeast(6.2f),
-                    maxVirtualSp = ((if (isTall) 13.4f else 12.2f) + virtualDeltaCapBoost * 0.75f).coerceAtLeast(7.0f),
+                    desiredPhysicalSp = ((if (isTall) 11.8f else 10.8f) + detailsFontDelta * 0.75f).coerceAtLeast(6.5f),
+                    minVirtualSp = ((if (isCompactHeight) 9.8f else 11.0f) + detailsMinDeltaVirtual * 0.75f).coerceAtLeast(6.2f),
+                    maxVirtualSp = ((if (isTall) 13.4f else 12.2f) + detailsVirtualDeltaBoost * 0.75f).coerceAtLeast(7.0f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1584,7 +1657,7 @@ private fun WidgetCardSurface(
                     null
                 }
 
-                val fallbackSlots = if (dataFontDelta >= 3f && stripWidthFloat < 340f) {
+                val fallbackSlots = if (sliderFontDelta >= 3f && stripWidthFloat < 340f) {
                     minOf(4, model.days.size)
                 } else {
                     minOf(5, model.days.size)
@@ -1608,9 +1681,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = widestDateLabel,
                     availWidthDp = colWidthDp - 3f,
-                    desiredPhysicalSp = ((if (isTall) 11.4f else 10.6f) + dataFontDelta).coerceAtLeast(6.0f),
-                    minVirtualSp = (9.4f + minDeltaVirtual).coerceAtLeast(5.8f),
-                    maxVirtualSp = ((if (isTall) 14.0f else 12.8f) + virtualDeltaCapBoost).coerceAtLeast(6.5f),
+                    desiredPhysicalSp = ((if (isTall) 11.4f else 10.6f) + sliderFontDelta).coerceAtLeast(6.0f),
+                    minVirtualSp = (9.4f + sliderMinDeltaVirtual).coerceAtLeast(5.8f),
+                    maxVirtualSp = ((if (isTall) 14.0f else 12.8f) + sliderVirtualDeltaBoost).coerceAtLeast(6.5f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1618,9 +1691,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = widestHiLoLabel,
                     availWidthDp = colWidthDp - 3f,
-                    desiredPhysicalSp = ((if (isTall) 12.0f else 11.2f) + dataFontDelta).coerceAtLeast(6.5f),
-                    minVirtualSp = (9.8f + minDeltaVirtual).coerceAtLeast(6.2f),
-                    maxVirtualSp = ((if (isTall) 14.6f else 13.4f) + virtualDeltaCapBoost).coerceAtLeast(7.0f),
+                    desiredPhysicalSp = ((if (isTall) 12.0f else 11.2f) + sliderFontDelta).coerceAtLeast(6.5f),
+                    minVirtualSp = (9.8f + sliderMinDeltaVirtual).coerceAtLeast(6.2f),
+                    maxVirtualSp = ((if (isTall) 14.6f else 13.4f) + sliderVirtualDeltaBoost).coerceAtLeast(7.0f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1628,9 +1701,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = "100%",
                     availWidthDp = (colWidthDp - (if (isTall) 20f else 17f) - 2.5f).coerceAtLeast(22f),
-                    desiredPhysicalSp = ((if (isTall) 11.2f else 10.2f) + dataFontDelta * 0.85f).coerceAtLeast(6.0f),
-                    minVirtualSp = (9.0f + minDeltaVirtual * 0.85f).coerceAtLeast(5.8f),
-                    maxVirtualSp = ((if (isTall) 13.8f else 12.4f) + virtualDeltaCapBoost * 0.85f).coerceAtLeast(6.5f),
+                    desiredPhysicalSp = ((if (isTall) 11.2f else 10.2f) + sliderFontDelta * 0.85f).coerceAtLeast(6.0f),
+                    minVirtualSp = (9.0f + sliderMinDeltaVirtual * 0.85f).coerceAtLeast(5.8f),
+                    maxVirtualSp = ((if (isTall) 13.8f else 12.4f) + sliderVirtualDeltaBoost * 0.85f).coerceAtLeast(6.5f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1638,9 +1711,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = "10-DAY FORECAST · SWIPE ⇄   Next 5 ›",
                     availWidthDp = (stripWidthFloat - 16f).coerceAtLeast(120f),
-                    desiredPhysicalSp = (11.2f + dataFontDelta * 0.65f).coerceAtLeast(7.5f),
-                    minVirtualSp = (10.4f + minDeltaVirtual * 0.65f).coerceAtLeast(7.0f),
-                    maxVirtualSp = (13.6f + virtualDeltaCapBoost * 0.65f).coerceAtLeast(8.0f),
+                    desiredPhysicalSp = (11.2f + sliderFontDelta * 0.65f).coerceAtLeast(7.5f),
+                    minVirtualSp = (10.4f + sliderMinDeltaVirtual * 0.65f).coerceAtLeast(7.0f),
+                    maxVirtualSp = (13.6f + sliderVirtualDeltaBoost * 0.65f).coerceAtLeast(8.0f),
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1740,37 +1813,48 @@ private fun WidgetCardSurface(
 
                                 Spacer(modifier = GlanceModifier.defaultWeight())
 
-                                Text(
-                                    text = hlPrimaryLineText,
-                                    maxLines = 1,
-                                    modifier = GlanceModifier.fillMaxWidth(),
-                                    style = TextStyle(
-                                        color = primaryColor,
-                                        fontSize = hlPrimarySpFloat.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
-                                Text(
-                                    text = condHumidityLineText,
-                                    maxLines = 1,
-                                    modifier = GlanceModifier.fillMaxWidth(),
-                                    style = TextStyle(
-                                        color = humidityColor,
-                                        fontSize = condHumiditySpFloat.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
-                                if (showWindLine) {
+                                val nightDetailsModifier = if (hasDetailsBacking) {
+                                    GlanceModifier
+                                        .fillMaxWidth()
+                                        .cornerRadius(12.dp)
+                                        .background(ColorProvider(detailsBackingColor))
+                                        .padding(horizontal = 7.dp, vertical = 3.dp)
+                                } else {
+                                    GlanceModifier.fillMaxWidth()
+                                }
+                                Column(modifier = nightDetailsModifier) {
                                     Text(
-                                        text = model.windAndUvLine,
+                                        text = hlPrimaryLineText,
                                         maxLines = 1,
                                         modifier = GlanceModifier.fillMaxWidth(),
                                         style = TextStyle(
-                                            color = windUvColor,
-                                            fontSize = windUvSpFloat.sp,
+                                            color = detailsPrimaryColor,
+                                            fontSize = hlPrimarySpFloat.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                     )
+                                    Text(
+                                        text = condHumidityLineText,
+                                        maxLines = 1,
+                                        modifier = GlanceModifier.fillMaxWidth(),
+                                        style = TextStyle(
+                                            color = detailsHumidityColor,
+                                            fontSize = condHumiditySpFloat.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                    if (showWindLine) {
+                                        Text(
+                                            text = model.windAndUvLine,
+                                            maxLines = 1,
+                                            modifier = GlanceModifier.fillMaxWidth(),
+                                            style = TextStyle(
+                                                color = detailsWindUvColor,
+                                                fontSize = windUvSpFloat.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        )
+                                    }
                                 }
                             }
 
@@ -1900,7 +1984,7 @@ private fun WidgetCardSurface(
                                     maxLines = 1,
                                     style = TextStyle(
                                         color = alertTint,
-                                        fontSize = (11f + dataFontDelta * 0.65f).coerceAtLeast(7.5f).sp,
+                                        fontSize = (11f + detailsFontDelta * 0.65f).coerceAtLeast(7.5f).sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                 )

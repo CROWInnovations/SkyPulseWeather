@@ -426,6 +426,27 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
+    fun adjustWidgetDetailsFontSize(deltaSp: Float) {
+        viewModelScope.launch {
+            prefsRepository.adjustWidgetDetailsFontSize(deltaSp)
+            repository.notifyWidgetsChanged()
+        }
+    }
+
+    fun adjustWidgetDetailsTransparencyDelta(deltaPct: Int) {
+        viewModelScope.launch {
+            prefsRepository.adjustWidgetDetailsTransparencyDelta(deltaPct)
+            repository.notifyWidgetsChanged()
+        }
+    }
+
+    fun setWidgetDetailsBackingTone(tone: com.crowinnovations.skypulseweather.domain.BackingTone) {
+        viewModelScope.launch {
+            prefsRepository.setWidgetDetailsBackingTone(tone)
+            repository.notifyWidgetsChanged()
+        }
+    }
+
     fun adjustWidgetDataFontSize(deltaSp: Float) {
         viewModelScope.launch {
             prefsRepository.adjustWidgetDataFontSize(deltaSp)

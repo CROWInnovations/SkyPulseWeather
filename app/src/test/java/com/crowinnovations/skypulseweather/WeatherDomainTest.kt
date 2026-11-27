@@ -267,6 +267,9 @@ class WeatherDomainTest {
         assertEquals(7f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MIN_FORECAST_FONT_SP, 0.001f)
         assertEquals(12f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP, 0.001f)
         assertEquals(22f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_FORECAST_FONT_SP, 0.001f)
+        assertEquals(7f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MIN_WIDGET_DETAILS_FONT_SP, 0.001f)
+        assertEquals(13f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_WIDGET_DETAILS_FONT_SP, 0.001f)
+        assertEquals(18f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_DETAILS_FONT_SP, 0.001f)
         assertEquals(7f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MIN_WIDGET_DATA_FONT_SP, 0.001f)
         assertEquals(12f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP, 0.001f)
         assertEquals(17f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_DATA_FONT_SP, 0.001f)
@@ -333,5 +336,22 @@ class WeatherDomainTest {
         assertTrue(darkenedOpaqueSlider.alpha > defaultSlider.alpha)
         assertEquals(0.0f, fullyTransparentSlider.alpha, 0.001f)
         assertTrue(lightenedOpaqueSlider.red > 0.85f && lightenedOpaqueSlider.alpha > 0.70f)
+
+        // Widget details-below-temp backing checks (clear by default, opaque when darkened or transparency decreased)
+        val clearDetailsDefault = com.crowinnovations.skypulseweather.widget.resolveWidgetDetailsBackingColor(
+            com.crowinnovations.skypulseweather.domain.BackingTone.DEFAULT,
+            0
+        )
+        val smokedDetails = com.crowinnovations.skypulseweather.widget.resolveWidgetDetailsBackingColor(
+            com.crowinnovations.skypulseweather.domain.BackingTone.DEFAULT,
+            -30
+        )
+        val darkenedDetails = com.crowinnovations.skypulseweather.widget.resolveWidgetDetailsBackingColor(
+            com.crowinnovations.skypulseweather.domain.BackingTone.DARKEN,
+            -20
+        )
+        assertEquals(0.0f, clearDetailsDefault.alpha, 0.001f)
+        assertTrue(smokedDetails.alpha > 0.40f)
+        assertTrue(darkenedDetails.alpha > 0.65f)
     }
 }

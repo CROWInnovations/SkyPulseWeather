@@ -436,6 +436,9 @@ fun SettingsDialog(
     onAdjustWidgetTempFontSize: (Float) -> Unit,
     onWidgetTempFontStyleSelect: (DisplayFontStyle) -> Unit,
     onWidgetTempTextColorSelect: (Int) -> Unit,
+    onAdjustWidgetDetailsFontSize: (Float) -> Unit = {},
+    onAdjustWidgetDetailsTransparency: (Int) -> Unit = {},
+    onWidgetDetailsBackingToneSelect: (BackingTone) -> Unit = {},
     onAdjustWidgetDataFontSize: (Float) -> Unit = {},
     onAdjustWidgetSliderTransparency: (Int) -> Unit = {},
     onWidgetSliderBackingToneSelect: (BackingTone) -> Unit = {},
@@ -766,12 +769,65 @@ fun SettingsDialog(
                         Spacer(modifier = Modifier.height(2.dp))
                         SettingsDisplaySectionBanner(
                             title = "WIDGET DISPLAY",
-                            subtitle = "Home screen widget 10-day slider, data & colors",
+                            subtitle = "Home screen widget details, slider & styling",
                             icon = Icons.Default.Widgets,
                             accentColor = MaterialTheme.colorScheme.secondary
                         )
 
-                        SettingsGroupCard(title = "WIDGET · 10-DAY SLIDER & DATA", hairline = hairline) {
+                        SettingsGroupCard(title = "WIDGET · DETAILS BELOW TEMP", hairline = hairline) {
+                            CompactSettingRow(label = "Font Size") {
+                                FontSizeStepper(
+                                    currentSp = preferences.widgetDetailsFontSizeSp,
+                                    canDecrease = preferences.widgetDetailsFontSizeSp > UserPreferencesRepository.MIN_WIDGET_DETAILS_FONT_SP + 0.01f,
+                                    canIncrease = preferences.widgetDetailsFontSizeSp < UserPreferencesRepository.MAX_WIDGET_DETAILS_FONT_SP - 0.01f,
+                                    onDecrease = {
+                                        onAdjustWidgetDetailsFontSize(-UserPreferencesRepository.FONT_SIZE_STEP_SP)
+                                    },
+                                    onIncrease = {
+                                        onAdjustWidgetDetailsFontSize(UserPreferencesRepository.FONT_SIZE_STEP_SP)
+                                    }
+                                )
+                            }
+                            CompactSettingRow(label = "Details Backing") {
+                                CompactSegmentedControl(
+                                    options = BackingTone.entries.map { tone ->
+                                        tone.label to (preferences.widgetDetailsBackingTone == tone)
+                                    },
+                                    compactItems = true,
+                                    onSelectIndex = { idx ->
+                                        BackingTone.entries.getOrNull(idx)?.let(onWidgetDetailsBackingToneSelect)
+                                    }
+                                )
+                            }
+                            CompactSettingRow(label = "Transparency") {
+                                val detTrDelta = preferences.widgetDetailsTransparencyDeltaPct
+                                val isDefaultTone = preferences.widgetDetailsBackingTone == BackingTone.DEFAULT
+                                val detTrLabel = when {
+                                    isDefaultTone && detTrDelta >= 0 -> "Clear"
+                                    detTrDelta == 0 -> "Default"
+                                    detTrDelta > 0 -> "+${detTrDelta}%"
+                                    else -> "${detTrDelta}%"
+                                }
+                                val canIncDetailsTr = if (isDefaultTone) {
+                                    detTrDelta < 0
+                                } else {
+                                    detTrDelta < UserPreferencesRepository.MAX_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT
+                                }
+                                FontBoostStepper(
+                                    currentLabel = detTrLabel,
+                                    canDecrease = detTrDelta > UserPreferencesRepository.MIN_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT,
+                                    canIncrease = canIncDetailsTr,
+                                    onDecrease = {
+                                        onAdjustWidgetDetailsTransparency(-UserPreferencesRepository.WIDGET_DETAILS_TRANSPARENCY_STEP_PCT)
+                                    },
+                                    onIncrease = {
+                                        onAdjustWidgetDetailsTransparency(UserPreferencesRepository.WIDGET_DETAILS_TRANSPARENCY_STEP_PCT)
+                                    }
+                                )
+                            }
+                        }
+
+                        SettingsGroupCard(title = "WIDGET · 10-DAY FORECAST SLIDER", hairline = hairline) {
                             CompactSettingRow(label = "Font Size") {
                                 FontSizeStepper(
                                     currentSp = preferences.widgetDataFontSizeSp,
