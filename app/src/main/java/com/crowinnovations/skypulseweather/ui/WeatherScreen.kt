@@ -47,6 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -121,10 +122,12 @@ fun WeatherScreen(
     onDateDisplayPositionSelect: (DateDisplayPosition) -> Unit,
     onAdjustTimeFontSize: (Int) -> Unit,
     onTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
-    onTimeTextColorSelect: (DisplayTextColor) -> Unit,
+    onTimeTextColorSelect: (Int) -> Unit,
     onAdjustWidgetTempFontSize: (Int) -> Unit,
     onWidgetTempFontStyleSelect: (DisplayFontStyle) -> Unit,
-    onWidgetTempTextColorSelect: (DisplayTextColor) -> Unit,
+    onWidgetTempTextColorSelect: (Int) -> Unit,
+    onAdjustForecastTransparency: (Int) -> Unit = {},
+    onAdjustForecastFontBoost: (Int) -> Unit = {},
     onGatewaySave: (String) -> Unit
 ) {
     val isDark = rememberIsDarkTheme(uiState.preferences.themeMode)
@@ -182,7 +185,7 @@ fun WeatherScreen(
                 TopCenteredClockBar(
                     fontSizeSp = uiState.preferences.timeFontSizeSp,
                     fontStylePref = uiState.preferences.timeFontStyle,
-                    textColorPref = uiState.preferences.timeTextColor,
+                    textColorArgb = uiState.preferences.timeTextColorArgb,
                     datePosition = uiState.preferences.dateDisplayPosition
                 )
             }
@@ -281,6 +284,11 @@ fun WeatherScreen(
                         isRefreshing = uiState.isRefreshing,
                         tempUnit = uiState.preferences.tempUnit,
                         windUnit = uiState.preferences.windUnit,
+                        tempFontSizeSp = uiState.preferences.widgetTempFontSizeSp,
+                        tempFontStyle = uiState.preferences.widgetTempFontStyle,
+                        tempTextColorArgb = uiState.preferences.widgetTempTextColorArgb,
+                        forecastTransparencyDeltaPct = uiState.preferences.forecastTransparencyDeltaPct,
+                        forecastFontBoostSp = uiState.preferences.forecastFontBoostSp,
                         palette = pagePalette,
                         onRetry = onRefresh
                     )
@@ -323,6 +331,8 @@ fun WeatherScreen(
                 onAdjustWidgetTempFontSize = onAdjustWidgetTempFontSize,
                 onWidgetTempFontStyleSelect = onWidgetTempFontStyleSelect,
                 onWidgetTempTextColorSelect = onWidgetTempTextColorSelect,
+                onAdjustForecastTransparency = onAdjustForecastTransparency,
+                onAdjustForecastFontBoost = onAdjustForecastFontBoost,
                 onGatewaySave = onGatewaySave,
                 onDismiss = onCloseSettings
             )
@@ -334,11 +344,11 @@ fun WeatherScreen(
 private fun TopCenteredClockBar(
     fontSizeSp: Int,
     fontStylePref: DisplayFontStyle,
-    textColorPref: DisplayTextColor,
+    textColorArgb: Int,
     datePosition: DateDisplayPosition
 ) {
     val context = LocalContext.current
-    var nowMillis by remember { mutableStateOf(System.currentTimeMillis()) }
+    var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
             val now = System.currentTimeMillis()
@@ -381,7 +391,7 @@ private fun TopCenteredClockBar(
         fontStyle = chosenFontStyle,
         shadow = clockShadow
     )
-    val resolvedColor = Color(textColorPref.argb)
+    val resolvedColor = Color(textColorArgb or 0xFF000000.toInt())
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -703,6 +713,11 @@ private fun LocationForecastPage(
     isRefreshing: Boolean,
     tempUnit: TempUnit,
     windUnit: WindUnit,
+    tempFontSizeSp: Int = UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_SP,
+    tempFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
+    tempTextColorArgb: Int = DisplayTextColor.WHITE.argb,
+    forecastTransparencyDeltaPct: Int = 0,
+    forecastFontBoostSp: Int = 0,
     palette: SkyPalette,
     onRetry: () -> Unit
 ) {
@@ -766,6 +781,9 @@ private fun LocationForecastPage(
                         snapshot = snapshot,
                         tempUnit = tempUnit,
                         windUnit = windUnit,
+                        tempFontSizeSp = tempFontSizeSp,
+                        tempFontStyle = tempFontStyle,
+                        tempTextColorArgb = tempTextColorArgb,
                         palette = palette,
                         reserveRightCelestialStage = false
                     )
@@ -782,14 +800,18 @@ private fun LocationForecastPage(
                     HourlyForecastCard(
                         hourly = snapshot.hourly,
                         tempUnit = tempUnit,
-                        palette = palette
+                        palette = palette,
+                        transparencyDeltaPct = forecastTransparencyDeltaPct,
+                        fontBoostSp = forecastFontBoostSp
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Spacer(modifier = Modifier.weight(1f))
                     FiveDayForecastCard(
                         daily = snapshot.daily,
                         tempUnit = tempUnit,
-                        palette = palette
+                        palette = palette,
+                        transparencyDeltaPct = forecastTransparencyDeltaPct,
+                        fontBoostSp = forecastFontBoostSp
                     )
                 }
             }
@@ -810,6 +832,9 @@ private fun LocationForecastPage(
                     snapshot = snapshot,
                     tempUnit = tempUnit,
                     windUnit = windUnit,
+                    tempFontSizeSp = tempFontSizeSp,
+                    tempFontStyle = tempFontStyle,
+                    tempTextColorArgb = tempTextColorArgb,
                     palette = palette,
                     reserveRightCelestialStage = true
                 )
@@ -819,7 +844,9 @@ private fun LocationForecastPage(
                 HourlyForecastCard(
                     hourly = snapshot.hourly,
                     tempUnit = tempUnit,
-                    palette = palette
+                    palette = palette,
+                    transparencyDeltaPct = forecastTransparencyDeltaPct,
+                    fontBoostSp = forecastFontBoostSp
                 )
 
                 // Flexible spring aligns the 5-Day Forecast card flush to the bottom of the display screen
@@ -829,7 +856,9 @@ private fun LocationForecastPage(
                 FiveDayForecastCard(
                     daily = snapshot.daily,
                     tempUnit = tempUnit,
-                    palette = palette
+                    palette = palette,
+                    transparencyDeltaPct = forecastTransparencyDeltaPct,
+                    fontBoostSp = forecastFontBoostSp
                 )
             }
         }

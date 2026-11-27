@@ -48,8 +48,8 @@ internal data class StyledTempBitmap(
 object WidgetBitmapRenderer {
 
     /**
-     * Measures exact single-line bold sans-serif text width in widget virtual `dp` so `City, State`
-     * and the hero Temperature share an exact horizontal centerline without clipping.
+     * Measures single-line bold text width in widget virtual `dp` using `Typeface.DEFAULT_BOLD`
+     * with OEM font width headroom so hero temperatures align cleanly beneath `City, State`.
      */
     internal fun measureWidgetTextWidthDp(
         context: Context,
@@ -61,17 +61,17 @@ object WidgetBitmapRenderer {
         val density = context.resources.displayMetrics.density.safeClamp(1.5f, 4.0f)
         val safeFontScale = fontScale.safeClamp(0.85f, 1.45f)
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            typeface = Typeface.DEFAULT_BOLD
             textSize = virtualFontSizeSp * safeFontScale * density
         }
-        return (paint.measureText(text) / density) + 4f
+        return (paint.measureText(text) * 1.07f / density) + 6f
     }
 
     /**
      * Renders the hero temperature string (`"40°"`, `"-12°"`, `"102°"`) cropped tightly to its
      * true glyph ink bounds (eliminating `TextView`'s ~42% empty diacritic-ascent and descender
-     * box bloat) while compensating for launcher host downscaling (e.g. Samsung One UI
-     * `hsResizeRatio = 0.8333f`) so `74sp` in Settings renders at true physical `74sp` on screen.
+     * box bloat) while compensating for launcher host downscaling
+     * (`hsResizeRatio`) so `74sp` in Settings renders at true physical `74sp` on screen.
      */
     internal fun renderStyledTemperatureBitmap(
         context: Context,
@@ -259,7 +259,8 @@ object WidgetBitmapRenderer {
         widthPx: Int = 408,
         heightPx: Int = 320,
         topReservedFraction: Float = 0f,
-        maxMoonBottomFraction: Float = 0.64f
+        maxMoonBottomFraction: Float = 0.64f,
+        suppressStaticRainStreaks: Boolean = false
     ): Bitmap {
         val safeW = widthPx.safeClamp(144, 500)
         val safeH = heightPx.safeClamp(128, 500)
@@ -276,6 +277,10 @@ object WidgetBitmapRenderer {
             addRoundRect(RectF(0f, 0f, w, h), cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
         }
         canvas.clipPath(roundClip)
+
+        val isStorm = condition == WeatherCondition.RAIN ||
+            condition == WeatherCondition.DRIZZLE ||
+            condition == WeatherCondition.THUNDERSTORM
 
         // 1. Decode matching photorealistic 3D sky scene (tornado strictly ONLY when hasTornadoWarning == true)
         val drawableRes = sceneDrawableFor(
@@ -356,10 +361,6 @@ object WidgetBitmapRenderer {
         )
         canvas.drawRect(0f, 0f, w, h, paint)
         paint.shader = null
-
-        val isStorm = condition == WeatherCondition.RAIN ||
-            condition == WeatherCondition.DRIZZLE ||
-            condition == WeatherCondition.THUNDERSTORM
 
         // 3. Upper-Right 3D Celestial Stage (strictly below topReservedFraction when Time Display is ON)
         if (!hasTornadoWarning) {
@@ -469,7 +470,7 @@ object WidgetBitmapRenderer {
                 paint.shader = null
             }
 
-            if (condition == WeatherCondition.DRIZZLE || condition == WeatherCondition.RAIN || condition == WeatherCondition.THUNDERSTORM) {
+            if (isStorm && !suppressStaticRainStreaks) {
                 paint.style = Paint.Style.STROKE
                 paint.strokeCap = Paint.Cap.ROUND
                 paint.strokeWidth = 2.2f
@@ -489,6 +490,94 @@ object WidgetBitmapRenderer {
         canvas.drawRoundRect(RectF(1f, 1f, w - 1f, h - 1f), cornerRadiusPx, cornerRadiusPx, paint)
 
         return outBmp
+    }
+
+    /**
+     * Renders a vertically seamless 3-depth 3D falling rain curtain for widgets larger than `2x2`.
+     * Paired with linear `-100%p -> 0%p` / `0%p -> +100%p` translation (zero alpha fade, zero splashes),
+     * rain falls in a smooth, continuous, unbroken stream without pulsing or hitting the screen.
+     */
+    fun renderSeamlessFallingRainCurtain(
+        condition: WeatherCondition,
+        hasTornadoWarning: Boolean,
+        isLargerThan2x2: Boolean,
+        widthPx: Int,
+        heightPx: Int
+    ): Bitmap? {
+        val isRainy = condition == WeatherCondition.DRIZZLE ||
+            condition == WeatherCondition.RAIN ||
+            condition == WeatherCondition.THUNDERSTORM ||
+            hasTornadoWarning
+        if (!isLargerThan2x2 || !isRainy) return null
+
+        val safeW = (widthPx * 0.88f).roundToInt().safeClamp(260, 384)
+        val safeH = (heightPx * 0.88f).roundToInt().safeClamp(180, 288)
+        val w = safeW.toFloat()
+        val h = safeH.toFloat()
+        val bmp = Bitmap.createBitmap(safeW, safeH, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+        }
+
+        val isDrizzle = condition == WeatherCondition.DRIZZLE && !hasTornadoWarning
+        val streakCount = if (isDrizzle) 36 else 52
+        val slantFactor = if (condition == WeatherCondition.THUNDERSTORM || hasTornadoWarning) 0.11f else 0.08f
+
+        for (i in 0 until streakCount) {
+            val depthLayer = when {
+                i % 5 == 0 -> 2 // Foreground 3D rain
+                i % 2 == 0 -> 1 // Mid-ground rain
+                else -> 0       // Far atmospheric rain
+            }
+            val seedX = (((i * 61 + 19) % 1000) / 1000f)
+            val seedY = (((i * 137 + 43) % 1000) / 1000f)
+            val sx = w * (0.02f + seedX * 0.96f)
+            val sy = h * seedY
+
+            val streakLen = when (depthLayer) {
+                0 -> h * 0.105f
+                1 -> h * 0.165f
+                else -> h * 0.235f
+            }
+            val strokeW = when (depthLayer) {
+                0 -> 0.85f
+                1 -> 1.35f
+                else -> 1.90f
+            }
+            val ex = sx - streakLen * slantFactor
+            val ey = sy + streakLen
+
+            val midColor = when (depthLayer) {
+                0 -> Color.parseColor("#327DD3FC")
+                1 -> Color.parseColor("#547DD3FC")
+                else -> Color.parseColor("#7EBAE6FD")
+            }
+            val tipColor = when (depthLayer) {
+                0 -> Color.parseColor("#5ABAE6FD")
+                1 -> Color.parseColor("#98E0F2FE")
+                else -> Color.parseColor("#D8F8FAFC")
+            }
+
+            paint.strokeWidth = strokeW
+            for (wrap in -1..1) {
+                val dy = wrap * h
+                val y0 = sy + dy
+                val y1 = ey + dy
+                if (y1 >= -4f && y0 <= h + 4f) {
+                    paint.shader = LinearGradient(
+                        sx, y0, ex, y1,
+                        intArrayOf(Color.TRANSPARENT, midColor, tipColor),
+                        floatArrayOf(0f, 0.58f, 1f),
+                        Shader.TileMode.CLAMP
+                    )
+                    canvas.drawLine(sx, y0, ex, y1, paint)
+                }
+            }
+        }
+        paint.shader = null
+        return bmp
     }
 
     /**

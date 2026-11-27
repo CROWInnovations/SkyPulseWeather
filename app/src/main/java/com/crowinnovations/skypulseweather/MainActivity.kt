@@ -58,10 +58,12 @@ class MainActivity : ComponentActivity() {
                     onDateDisplayPositionSelect = viewModel::setDateDisplayPosition,
                     onAdjustTimeFontSize = viewModel::adjustTimeFontSize,
                     onTimeFontStyleSelect = viewModel::setTimeFontStyle,
-                    onTimeTextColorSelect = viewModel::setTimeTextColor,
+                    onTimeTextColorSelect = viewModel::setTimeTextColorArgb,
                     onAdjustWidgetTempFontSize = viewModel::adjustWidgetTempFontSize,
                     onWidgetTempFontStyleSelect = viewModel::setWidgetTempFontStyle,
-                    onWidgetTempTextColorSelect = viewModel::setWidgetTempTextColor,
+                    onWidgetTempTextColorSelect = viewModel::setWidgetTempTextColorArgb,
+                    onAdjustForecastTransparency = viewModel::adjustForecastTransparencyDelta,
+                    onAdjustForecastFontBoost = viewModel::adjustForecastFontBoost,
                     onGatewaySave = viewModel::setGatewayBaseUrl
                 )
             }

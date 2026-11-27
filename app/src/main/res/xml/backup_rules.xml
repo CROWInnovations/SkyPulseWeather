@@ -3,4 +3,5 @@
     <exclude domain="database" path="skypulse_weather.db" />
     <exclude domain="database" path="skypulse_weather.db-shm" />
     <exclude domain="database" path="skypulse_weather.db-wal" />
+    <exclude domain="file" path="datastore" />
 </full-backup-content>

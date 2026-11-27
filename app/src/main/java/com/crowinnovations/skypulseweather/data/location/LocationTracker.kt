@@ -93,7 +93,7 @@ class LocationTracker @Inject constructor(
 
         if (locationManager == null) return null
 
-        // 2. Fallback to Android platform LocationManager (handles hardware GPS, AOSP, and emulators)
+        // 2. Fallback to Android platform LocationManager (handles hardware GPS and AOSP location providers)
         val providers = listOf(
             LocationManager.GPS_PROVIDER,
             LocationManager.NETWORK_PROVIDER,

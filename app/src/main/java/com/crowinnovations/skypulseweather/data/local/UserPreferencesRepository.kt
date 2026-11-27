@@ -39,11 +39,13 @@ data class AppPreferences(
     val dateDisplayPosition: DateDisplayPosition = DateDisplayPosition.OFF,
     val timeFontSizeSp: Int = UserPreferencesRepository.DEFAULT_TIME_FONT_SP,
     val timeFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
-    val timeTextColor: DisplayTextColor = DisplayTextColor.WHITE,
+    val timeTextColorArgb: Int = DisplayTextColor.WHITE.argb,
     val widgetTempFontSizeSp: Int = UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_SP,
     val widgetTempFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
-    val widgetTempTextColor: DisplayTextColor = DisplayTextColor.WHITE,
-    val widgetForecastDayOffset: Int = 0
+    val widgetTempTextColorArgb: Int = DisplayTextColor.WHITE.argb,
+    val widgetForecastDayOffset: Int = 0,
+    val forecastTransparencyDeltaPct: Int = UserPreferencesRepository.DEFAULT_FORECAST_TRANSPARENCY_DELTA_PCT,
+    val forecastFontBoostSp: Int = UserPreferencesRepository.DEFAULT_FORECAST_FONT_BOOST_SP
 )
 
 @Singleton
@@ -63,10 +65,14 @@ class UserPreferencesRepository @Inject constructor(
         private val KEY_TIME_FONT_SIZE_SP = intPreferencesKey("time_font_size_sp")
         private val KEY_TIME_FONT_STYLE = stringPreferencesKey("time_font_style")
         private val KEY_TIME_TEXT_COLOR = stringPreferencesKey("time_text_color")
+        private val KEY_TIME_TEXT_COLOR_ARGB = intPreferencesKey("time_text_color_argb")
         private val KEY_WIDGET_TEMP_FONT_SIZE_SP = intPreferencesKey("widget_temp_font_size_sp")
         private val KEY_WIDGET_TEMP_FONT_STYLE = stringPreferencesKey("widget_temp_font_style")
         private val KEY_WIDGET_TEMP_TEXT_COLOR = stringPreferencesKey("widget_temp_text_color")
+        private val KEY_WIDGET_TEMP_TEXT_COLOR_ARGB = intPreferencesKey("widget_temp_text_color_argb")
         private val KEY_WIDGET_DAY_OFFSET = intPreferencesKey("widget_forecast_day_offset")
+        private val KEY_FORECAST_TRANSPARENCY_DELTA_PCT = intPreferencesKey("forecast_transparency_delta_pct")
+        private val KEY_FORECAST_FONT_BOOST_SP = intPreferencesKey("forecast_font_boost_sp")
         private val KEY_INITIAL_SEED_DONE = booleanPreferencesKey("initial_seed_done")
         private val KEY_BUDGET_EPOCH_DAY = longPreferencesKey("budget_epoch_day")
         private val KEY_BUDGET_CALLS = intPreferencesKey("budget_calls_today")
@@ -83,6 +89,16 @@ class UserPreferencesRepository @Inject constructor(
         const val MAX_WIDGET_TEMP_FONT_SP = 74
         const val DEFAULT_WIDGET_TEMP_FONT_SP = 46
         const val WIDGET_TEMP_FONT_STEP_SP = 4
+
+        const val MIN_FORECAST_TRANSPARENCY_DELTA_PCT = -60
+        const val MAX_FORECAST_TRANSPARENCY_DELTA_PCT = 60
+        const val DEFAULT_FORECAST_TRANSPARENCY_DELTA_PCT = 0
+        const val FORECAST_TRANSPARENCY_STEP_PCT = 10
+
+        const val MIN_FORECAST_FONT_BOOST_SP = 0
+        const val MAX_FORECAST_FONT_BOOST_SP = 10
+        const val DEFAULT_FORECAST_FONT_BOOST_SP = 0
+        const val FORECAST_FONT_BOOST_STEP_SP = 1
 
         private fun widgetBindingKey(appWidgetId: Int) =
             longPreferencesKey("widget_loc_$appWidgetId")
@@ -116,20 +132,26 @@ class UserPreferencesRepository @Inject constructor(
         val timeStyle = runCatching {
             DisplayFontStyle.valueOf(prefs[KEY_TIME_FONT_STYLE] ?: DisplayFontStyle.DEFAULT.name)
         }.getOrDefault(DisplayFontStyle.DEFAULT)
-        val timeColor = runCatching {
+        val legacyTimeColor = runCatching {
             DisplayTextColor.valueOf(prefs[KEY_TIME_TEXT_COLOR] ?: DisplayTextColor.WHITE.name)
         }.getOrDefault(DisplayTextColor.WHITE)
+        val timeColorArgb = (prefs[KEY_TIME_TEXT_COLOR_ARGB] ?: legacyTimeColor.argb) or 0xFF000000.toInt()
 
         val safeWidgetTempSp = (prefs[KEY_WIDGET_TEMP_FONT_SIZE_SP] ?: DEFAULT_WIDGET_TEMP_FONT_SP)
             .safeClamp(MIN_WIDGET_TEMP_FONT_SP, MAX_WIDGET_TEMP_FONT_SP)
         val widgetTempStyle = runCatching {
             DisplayFontStyle.valueOf(prefs[KEY_WIDGET_TEMP_FONT_STYLE] ?: DisplayFontStyle.DEFAULT.name)
         }.getOrDefault(DisplayFontStyle.DEFAULT)
-        val widgetTempColor = runCatching {
+        val legacyWidgetTempColor = runCatching {
             DisplayTextColor.valueOf(prefs[KEY_WIDGET_TEMP_TEXT_COLOR] ?: DisplayTextColor.WHITE.name)
         }.getOrDefault(DisplayTextColor.WHITE)
+        val widgetTempColorArgb = (prefs[KEY_WIDGET_TEMP_TEXT_COLOR_ARGB] ?: legacyWidgetTempColor.argb) or 0xFF000000.toInt()
 
         val safeDayOffset = (prefs[KEY_WIDGET_DAY_OFFSET] ?: 0).safeClamp(0, 5)
+        val safeTransparencyDeltaPct = (prefs[KEY_FORECAST_TRANSPARENCY_DELTA_PCT] ?: DEFAULT_FORECAST_TRANSPARENCY_DELTA_PCT)
+            .safeClamp(MIN_FORECAST_TRANSPARENCY_DELTA_PCT, MAX_FORECAST_TRANSPARENCY_DELTA_PCT)
+        val safeForecastFontBoostSp = (prefs[KEY_FORECAST_FONT_BOOST_SP] ?: DEFAULT_FORECAST_FONT_BOOST_SP)
+            .safeClamp(MIN_FORECAST_FONT_BOOST_SP, MAX_FORECAST_FONT_BOOST_SP)
 
         AppPreferences(
             tempUnit = unit,
@@ -141,11 +163,13 @@ class UserPreferencesRepository @Inject constructor(
             dateDisplayPosition = datePosition,
             timeFontSizeSp = safeTimeFontSp,
             timeFontStyle = timeStyle,
-            timeTextColor = timeColor,
+            timeTextColorArgb = timeColorArgb,
             widgetTempFontSizeSp = safeWidgetTempSp,
             widgetTempFontStyle = widgetTempStyle,
-            widgetTempTextColor = widgetTempColor,
-            widgetForecastDayOffset = safeDayOffset
+            widgetTempTextColorArgb = widgetTempColorArgb,
+            widgetForecastDayOffset = safeDayOffset,
+            forecastTransparencyDeltaPct = safeTransparencyDeltaPct,
+            forecastFontBoostSp = safeForecastFontBoostSp
         )
     }
 
@@ -189,8 +213,8 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { it[KEY_TIME_FONT_STYLE] = style.name }
     }
 
-    suspend fun setTimeTextColor(color: DisplayTextColor) {
-        dataStore.edit { it[KEY_TIME_TEXT_COLOR] = color.name }
+    suspend fun setTimeTextColorArgb(argb: Int) {
+        dataStore.edit { it[KEY_TIME_TEXT_COLOR_ARGB] = argb or 0xFF000000.toInt() }
     }
 
     suspend fun adjustWidgetTempFontSize(deltaSp: Int) {
@@ -206,13 +230,31 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { it[KEY_WIDGET_TEMP_FONT_STYLE] = style.name }
     }
 
-    suspend fun setWidgetTempTextColor(color: DisplayTextColor) {
-        dataStore.edit { it[KEY_WIDGET_TEMP_TEXT_COLOR] = color.name }
+    suspend fun setWidgetTempTextColorArgb(argb: Int) {
+        dataStore.edit { it[KEY_WIDGET_TEMP_TEXT_COLOR_ARGB] = argb or 0xFF000000.toInt() }
     }
 
     suspend fun setWidgetForecastDayOffset(offset: Int) {
         val clamped = offset.safeClamp(0, 5)
         dataStore.edit { it[KEY_WIDGET_DAY_OFFSET] = clamped }
+    }
+
+    suspend fun adjustForecastTransparencyDelta(deltaPct: Int) {
+        dataStore.edit { prefs ->
+            val current = (prefs[KEY_FORECAST_TRANSPARENCY_DELTA_PCT] ?: DEFAULT_FORECAST_TRANSPARENCY_DELTA_PCT)
+                .safeClamp(MIN_FORECAST_TRANSPARENCY_DELTA_PCT, MAX_FORECAST_TRANSPARENCY_DELTA_PCT)
+            prefs[KEY_FORECAST_TRANSPARENCY_DELTA_PCT] = (current + deltaPct)
+                .safeClamp(MIN_FORECAST_TRANSPARENCY_DELTA_PCT, MAX_FORECAST_TRANSPARENCY_DELTA_PCT)
+        }
+    }
+
+    suspend fun adjustForecastFontBoost(deltaSp: Int) {
+        dataStore.edit { prefs ->
+            val current = (prefs[KEY_FORECAST_FONT_BOOST_SP] ?: DEFAULT_FORECAST_FONT_BOOST_SP)
+                .safeClamp(MIN_FORECAST_FONT_BOOST_SP, MAX_FORECAST_FONT_BOOST_SP)
+            prefs[KEY_FORECAST_FONT_BOOST_SP] = (current + deltaSp)
+                .safeClamp(MIN_FORECAST_FONT_BOOST_SP, MAX_FORECAST_FONT_BOOST_SP)
+        }
     }
 
     suspend fun setActiveLocationId(locationId: Long) {

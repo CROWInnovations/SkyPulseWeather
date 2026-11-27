@@ -48,11 +48,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository
 import com.crowinnovations.skypulseweather.domain.DailyForecastItem
+import com.crowinnovations.skypulseweather.domain.DisplayFontStyle
+import com.crowinnovations.skypulseweather.domain.DisplayTextColor
 import com.crowinnovations.skypulseweather.domain.HourlyForecastItem
 import com.crowinnovations.skypulseweather.domain.LunarPhaseCalculator
 import com.crowinnovations.skypulseweather.domain.TempUnit
@@ -66,6 +71,7 @@ import com.crowinnovations.skypulseweather.ui.theme.SkyPalette
 fun GlassCard(
     palette: SkyPalette,
     modifier: Modifier = Modifier,
+    surfaceColorOverride: Color? = null,
     contentPadding: PaddingValues = PaddingValues(16.dp),
     content: @Composable () -> Unit
 ) {
@@ -74,7 +80,7 @@ fun GlassCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(palette.cardSurface)
+            .background(surfaceColorOverride ?: palette.cardSurface)
             .border(width = 1.dp, color = palette.cardBorder, shape = shape)
             .padding(contentPadding)
     ) {
@@ -82,11 +88,24 @@ fun GlassCard(
     }
 }
 
+private fun resolveForecastCardSurfaceColor(
+    palette: SkyPalette,
+    transparencyDeltaPct: Int
+): Color {
+    if (transparencyDeltaPct == 0) return palette.cardSurface
+    // Negative delta decreases transparency (increases card alpha/opacity); positive delta increases transparency
+    val adjustedAlpha = (palette.cardSurface.alpha - (transparencyDeltaPct / 100f)).safeClamp(0.08f, 1.0f)
+    return palette.cardSurface.copy(alpha = adjustedAlpha)
+}
+
 @Composable
 fun HeroWeatherSection(
     snapshot: WeatherSnapshot,
     tempUnit: TempUnit,
     windUnit: WindUnit = WindUnit.MPH,
+    tempFontSizeSp: Int = UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_SP,
+    tempFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
+    tempTextColorArgb: Int = DisplayTextColor.WHITE.argb,
     palette: SkyPalette,
     reserveRightCelestialStage: Boolean = true,
     modifier: Modifier = Modifier
@@ -104,15 +123,34 @@ fun HeroWeatherSection(
         offset = Offset(0f, 3f),
         blurRadius = 14f
     )
+    val safeTempPrefSp = tempFontSizeSp.safeClamp(
+        UserPreferencesRepository.MIN_WIDGET_TEMP_FONT_SP,
+        UserPreferencesRepository.MAX_WIDGET_TEMP_FONT_SP
+    )
+    val heroMaxSp = (safeTempPrefSp * 2.35f).safeClamp(58f, 176f).sp
+    val heroMinSp = (safeTempPrefSp * 0.90f).safeClamp(24f, 64f).sp
+    val heroFontFamily = when (tempFontStyle) {
+        DisplayFontStyle.SERIF -> FontFamily.Serif
+        DisplayFontStyle.MONO -> FontFamily.Monospace
+        DisplayFontStyle.DEFAULT, DisplayFontStyle.ITALIC -> FontFamily.SansSerif
+    }
+    val heroFontStyle = if (tempFontStyle == DisplayFontStyle.ITALIC) {
+        FontStyle.Italic
+    } else {
+        FontStyle.Normal
+    }
+    val heroTempColor = Color(tempTextColorArgb or 0xFF000000.toInt())
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 6.dp, vertical = 4.dp)
     ) {
-        // Reserve right 40% in portrait so the giant upper-right 3D Moon shines completely unobstructed
-        val rightStageWidth = if (reserveRightCelestialStage) {
-            (maxWidth * 0.40f).coerceAtLeast(110.dp)
+        val hasUpperRightCelestial = !snapshot.isDay ||
+            snapshot.condition == com.crowinnovations.skypulseweather.domain.WeatherCondition.CLEAR_DAY ||
+            snapshot.condition == com.crowinnovations.skypulseweather.domain.WeatherCondition.PARTLY_CLOUDY_DAY
+        val rightStageWidth = if (reserveRightCelestialStage && hasUpperRightCelestial) {
+            (maxWidth * 0.34f).coerceAtLeast(96.dp)
         } else {
             8.dp
         }
@@ -123,14 +161,17 @@ fun HeroWeatherSection(
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    // 100% larger hero temperature degrees (up to 142.sp, auto-fitted safely)
                     AutoFitSingleLineText(
                         text = currentFormatted,
-                        color = Color(0xFFF8FAFC),
-                        maxFontSize = 142.sp,
-                        minFontSize = 68.sp,
+                        color = heroTempColor,
+                        maxFontSize = heroMaxSp,
+                        minFontSize = heroMinSp,
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.displayLarge.copy(shadow = heroShadow),
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontFamily = heroFontFamily,
+                            fontStyle = heroFontStyle,
+                            shadow = heroShadow
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
                     // Outside Humidity displayed directly below the temperature degrees
@@ -285,12 +326,47 @@ fun HourlyForecastCard(
     hourly: List<HourlyForecastItem>,
     tempUnit: TempUnit,
     palette: SkyPalette,
+    transparencyDeltaPct: Int = 0,
+    fontBoostSp: Int = 0,
     modifier: Modifier = Modifier
 ) {
     if (hourly.isEmpty()) return
 
+    val safeBoost = fontBoostSp.safeClamp(
+        UserPreferencesRepository.MIN_FORECAST_FONT_BOOST_SP,
+        UserPreferencesRepository.MAX_FORECAST_FONT_BOOST_SP
+    )
+    val cardSurface = resolveForecastCardSurfaceColor(palette, transparencyDeltaPct)
+    val pillAlpha = if (transparencyDeltaPct < 0) 0.22f else 0.14f
+    val headerStyle = if (safeBoost == 0) {
+        MaterialTheme.typography.labelMedium
+    } else {
+        MaterialTheme.typography.labelMedium.copy(fontSize = (12f + minOf(safeBoost, 4) * 0.45f).sp)
+    }
+    val subHeaderStyle = if (safeBoost == 0) {
+        MaterialTheme.typography.labelSmall
+    } else {
+        MaterialTheme.typography.labelSmall.copy(fontSize = (11f + minOf(safeBoost, 3) * 0.35f).sp)
+    }
+    val hourTextStyle = if (safeBoost == 0) {
+        MaterialTheme.typography.labelSmall
+    } else {
+        MaterialTheme.typography.labelSmall.copy(fontSize = (11f + safeBoost).sp)
+    }
+    val precipTextStyle = if (safeBoost == 0) {
+        MaterialTheme.typography.labelSmall
+    } else {
+        MaterialTheme.typography.labelSmall.copy(fontSize = (11f + safeBoost * 0.8f).sp)
+    }
+    val tempTextStyle = if (safeBoost == 0) {
+        MaterialTheme.typography.titleSmall
+    } else {
+        MaterialTheme.typography.titleSmall.copy(fontSize = (14f + safeBoost).sp)
+    }
+
     GlassCard(
         palette = palette,
+        surfaceColorOverride = cardSurface,
         modifier = modifier,
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
@@ -311,14 +387,14 @@ fun HourlyForecastCard(
                 SingleLineText(
                     text = "HOURLY FORECAST",
                     color = palette.secondaryText,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = headerStyle,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
                 SingleLineText(
                     text = "Next 24h",
                     color = palette.secondaryText,
-                    style = MaterialTheme.typography.labelSmall
+                    style = subHeaderStyle
                 )
             }
 
@@ -331,18 +407,18 @@ fun HourlyForecastCard(
                 items(hourly, key = { it.isoTime }) { item ->
                     Column(
                         modifier = Modifier
-                            .widthIn(min = 60.dp)
-                            .heightIn(min = 78.dp)
+                            .widthIn(min = (60 + safeBoost * 5).dp)
+                            .heightIn(min = (78 + safeBoost * 6).dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(palette.cardBorder.copy(alpha = 0.14f))
-                            .padding(horizontal = 7.dp, vertical = 5.dp),
+                            .background(palette.cardBorder.copy(alpha = pillAlpha))
+                            .padding(horizontal = 8.dp, vertical = 5.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
                         SingleLineText(
                             text = item.displayHour,
                             color = palette.primaryText,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = hourTextStyle,
                             fontWeight = if (item.displayHour == "Now") FontWeight.Bold else FontWeight.Medium,
                             textAlign = TextAlign.Center
                         )
@@ -350,13 +426,13 @@ fun HourlyForecastCard(
                         WeatherIllustration(
                             condition = item.condition,
                             isDay = item.isDay,
-                            size = 27.dp
+                            size = (27 + safeBoost).dp
                         )
 
                         SingleLineText(
                             text = if (item.precipProbability > 0) "${item.precipProbability}%" else " ",
                             color = palette.accent,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = precipTextStyle,
                             fontWeight = FontWeight.SemiBold,
                             textAlign = TextAlign.Center
                         )
@@ -364,7 +440,7 @@ fun HourlyForecastCard(
                         SingleLineText(
                             text = tempUnit.format(item.tempCelsius),
                             color = palette.primaryText,
-                            style = MaterialTheme.typography.titleSmall,
+                            style = tempTextStyle,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
                         )
@@ -380,165 +456,212 @@ fun FiveDayForecastCard(
     daily: List<DailyForecastItem>,
     tempUnit: TempUnit,
     palette: SkyPalette,
+    transparencyDeltaPct: Int = 0,
+    fontBoostSp: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val tenDays = daily.take(10)
     if (tenDays.isEmpty()) return
 
+    val safeBoost = fontBoostSp.safeClamp(
+        UserPreferencesRepository.MIN_FORECAST_FONT_BOOST_SP,
+        UserPreferencesRepository.MAX_FORECAST_FONT_BOOST_SP
+    )
+    val cardSurface = resolveForecastCardSurfaceColor(palette, transparencyDeltaPct)
     val overallMin = tenDays.minOf { it.lowCelsius }
     val overallMax = tenDays.maxOf { it.highCelsius }
     val safeSpan = (overallMax - overallMin).coerceAtLeast(1.0)
     val fontScaleFactor = LocalDensity.current.fontScale.safeClamp(1f, 1.35f)
     val hasAnyHighPrecipDay = tenDays.any { it.showRainPercentBesideCloud }
     val headerLabel = if (tenDays.size > 5) "${tenDays.size}-DAY FORECAST" else "5-DAY FORECAST"
+    val headerStyle = if (safeBoost == 0) {
+        MaterialTheme.typography.labelMedium
+    } else {
+        MaterialTheme.typography.labelMedium.copy(fontSize = (12f + minOf(safeBoost, 4) * 0.4f).sp)
+    }
+    val subHeaderStyle = if (safeBoost == 0) {
+        MaterialTheme.typography.labelSmall
+    } else {
+        MaterialTheme.typography.labelSmall.copy(fontSize = (11f + minOf(safeBoost, 2) * 0.35f).sp)
+    }
+    val hiLoMaxSp = (14f + safeBoost).sp
+    val precipMaxSp = (11f + safeBoost * 0.8f).sp
+    val dateMaxSp = (11.8f + safeBoost).sp
 
     GlassCard(
         palette = palette,
+        surfaceColorOverride = cardSurface,
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CalendarMonth,
-                    contentDescription = null,
-                    tint = palette.secondaryText,
-                    modifier = Modifier.size(15.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                SingleLineText(
-                    text = headerLabel,
-                    color = palette.secondaryText,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                SingleLineText(
-                    text = "Open-Meteo · NWS",
-                    color = palette.secondaryText.copy(alpha = 0.72f),
-                    style = MaterialTheme.typography.labelSmall
-                )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val rowWidthDp = maxWidth.value.coerceAtLeast(220f)
+            val rawDateW = (68f + safeBoost * 4.5f) * fontScaleFactor
+            val rawIconW = if (hasAnyHighPrecipDay) {
+                (58f + safeBoost * 3.1f) * fontScaleFactor
+            } else {
+                28f + safeBoost * 0.9f
             }
+            val rawRightW = (86f + safeBoost * 4.5f) * fontScaleFactor
+            val minBarAndGaps = if (rowWidthDp >= 310f) 34f else 22f
+            val maxCombinedCols = (rowWidthDp - minBarAndGaps).coerceAtLeast(180f)
+            val rawSum = (rawDateW + rawIconW + rawRightW).coerceAtLeast(1f)
+            val colScale = (maxCombinedCols / rawSum).safeClamp(0.45f, 1f)
+            val dateColWidth = (rawDateW * colScale).dp
+            val iconColWidth = (rawIconW * colScale).dp
+            val rightColWidth = (rawRightW * colScale).dp
+            val iconSizeDp = ((24f + safeBoost * 0.8f) * colScale.safeClamp(0.75f, 1f)).dp
 
-            Spacer(modifier = Modifier.height(3.dp))
-
-            tenDays.forEachIndexed { idx, day ->
-                if (idx > 0) {
-                    HorizontalDivider(
-                        color = palette.cardBorder.copy(alpha = 0.30f)
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarMonth,
+                        contentDescription = null,
+                        tint = palette.secondaryText,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    SingleLineText(
+                        text = headerLabel,
+                        color = palette.secondaryText,
+                        style = headerStyle,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SingleLineText(
+                        text = "Open-Meteo · NWS",
+                        color = palette.secondaryText.copy(alpha = 0.72f),
+                        style = subHeaderStyle
                     )
                 }
 
-                val startFraction = ((day.lowCelsius - overallMin) / safeSpan)
-                    .toFloat()
-                    .safeClamp(0f, 0.92f)
-                val endFraction = ((day.highCelsius - overallMin) / safeSpan)
-                    .toFloat()
-                    .safeClamp((startFraction + 0.08f).safeClamp(0f, 1f), 1f)
+                Spacer(modifier = Modifier.height(3.dp))
 
-                val hiVal = tempUnit.convert(day.highCelsius)
-                val loVal = tempUnit.convert(day.lowCelsius)
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 34.dp)
-                        .padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AutoFitSingleLineText(
-                        text = day.monthDayWeekLabel,
-                        color = palette.primaryText,
-                        maxFontSize = 11.8.sp,
-                        minFontSize = 8.5.sp,
-                        fontWeight = if (idx == 0) FontWeight.Bold else FontWeight.SemiBold,
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.width((68f * fontScaleFactor).dp)
-                    )
-
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    Row(
-                        modifier = if (hasAnyHighPrecipDay) {
-                            Modifier.width((58f * fontScaleFactor).dp)
-                        } else {
-                            Modifier.width(28.dp)
-                        },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        WeatherIllustration(
-                            condition = day.condition,
-                            size = 24.dp
+                tenDays.forEachIndexed { idx, day ->
+                    if (idx > 0) {
+                        HorizontalDivider(
+                            color = palette.cardBorder.copy(alpha = 0.30f)
                         )
-                        if (day.showRainPercentBesideCloud) {
-                            Spacer(modifier = Modifier.width(3.dp))
-                            SingleLineText(
-                                text = "${day.precipProbability.safeClamp(0, 100)}%",
-                                color = palette.accent,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
                     }
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    val startFraction = ((day.lowCelsius - overallMin) / safeSpan)
+                        .toFloat()
+                        .safeClamp(0f, 0.92f)
+                    val endFraction = ((day.highCelsius - overallMin) / safeSpan)
+                        .toFloat()
+                        .safeClamp((startFraction + 0.08f).safeClamp(0f, 1f), 1f)
 
-                    Canvas(
+                    val hiVal = tempUnit.convert(day.highCelsius)
+                    val loVal = tempUnit.convert(day.lowCelsius)
+
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(5.dp)
+                            .fillMaxWidth()
+                            .heightIn(min = (34 + safeBoost * 3).dp)
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val trackW = size.width
-                        val trackH = size.height
-                        if (trackW > 0f && trackH > 0f) {
-                            val r = CornerRadius(trackH / 2f, trackH / 2f)
-                            drawRoundRect(
-                                color = palette.secondaryText.copy(alpha = 0.22f),
-                                size = Size(trackW, trackH),
-                                cornerRadius = r
+                        AutoFitSingleLineText(
+                            text = day.monthDayWeekLabel,
+                            color = palette.primaryText,
+                            maxFontSize = dateMaxSp,
+                            minFontSize = 8.5.sp,
+                            fontWeight = if (idx == 0) FontWeight.Bold else FontWeight.SemiBold,
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.width(dateColWidth)
+                        )
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        Row(
+                            modifier = Modifier.width(iconColWidth),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            WeatherIllustration(
+                                condition = day.condition,
+                                size = iconSizeDp
                             )
-                            val barLeft = (trackW * startFraction).safeClamp(0f, trackW)
-                            val barRight = (trackW * endFraction).safeClamp(barLeft, trackW)
-                            val barWidth = (barRight - barLeft).coerceAtLeast(trackH)
-                                .safeClamp(0f, (trackW - barLeft).coerceAtLeast(0f))
-                            if (barWidth > 0f) {
-                                drawRoundRect(
-                                    brush = Brush.horizontalGradient(
-                                        colors = listOf(Color(0xFF38BDF8), Color(0xFFFBBF24)),
-                                        startX = barLeft,
-                                        endX = barLeft + barWidth
-                                    ),
-                                    topLeft = Offset(barLeft, 0f),
-                                    size = Size(barWidth, trackH),
-                                    cornerRadius = r
+                            if (day.showRainPercentBesideCloud) {
+                                Spacer(modifier = Modifier.width(3.dp))
+                                AutoFitSingleLineText(
+                                    text = "${day.precipProbability.safeClamp(0, 100)}%",
+                                    color = palette.accent,
+                                    maxFontSize = precipMaxSp,
+                                    minFontSize = 8.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.weight(1f)
                                 )
                             }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(5.dp))
 
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        modifier = Modifier.widthIn(min = (86f * fontScaleFactor).dp)
-                    ) {
-                        SingleLineText(
-                            text = "${hiVal}° / ${loVal}°",
-                            color = palette.primaryText,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.End
-                        )
-                        SingleLineText(
-                            text = "Precip:${day.precipProbability.safeClamp(0, 100)}%",
-                            color = palette.accent,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.End
-                        )
+                        Canvas(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height((5f + safeBoost * 0.45f).dp)
+                        ) {
+                            val trackW = size.width
+                            val trackH = size.height
+                            if (trackW > 0f && trackH > 0f) {
+                                val r = CornerRadius(trackH / 2f, trackH / 2f)
+                                drawRoundRect(
+                                    color = palette.secondaryText.copy(alpha = 0.22f),
+                                    size = Size(trackW, trackH),
+                                    cornerRadius = r
+                                )
+                                val barLeft = (trackW * startFraction).safeClamp(0f, trackW)
+                                val barRight = (trackW * endFraction).safeClamp(barLeft, trackW)
+                                val barWidth = (barRight - barLeft).coerceAtLeast(trackH)
+                                    .safeClamp(0f, (trackW - barLeft).coerceAtLeast(0f))
+                                if (barWidth > 0f) {
+                                    drawRoundRect(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(Color(0xFF38BDF8), Color(0xFFFBBF24)),
+                                            startX = barLeft,
+                                            endX = barLeft + barWidth
+                                        ),
+                                        topLeft = Offset(barLeft, 0f),
+                                        size = Size(barWidth, trackH),
+                                        cornerRadius = r
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(7.dp))
+
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            modifier = Modifier.width(rightColWidth)
+                        ) {
+                            AutoFitSingleLineText(
+                                text = "${hiVal}° / ${loVal}°",
+                                color = palette.primaryText,
+                                maxFontSize = hiLoMaxSp,
+                                minFontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.End,
+                                contentAlignment = Alignment.CenterEnd,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            AutoFitSingleLineText(
+                                text = "Precip:${day.precipProbability.safeClamp(0, 100)}%",
+                                color = palette.accent,
+                                maxFontSize = precipMaxSp,
+                                minFontSize = 8.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.labelSmall,
+                                textAlign = TextAlign.End,
+                                contentAlignment = Alignment.CenterEnd,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }

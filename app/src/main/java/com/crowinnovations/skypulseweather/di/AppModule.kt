@@ -2,6 +2,7 @@ package com.crowinnovations.skypulseweather.di
 
 import android.content.Context
 import androidx.room.Room
+import com.crowinnovations.skypulseweather.BuildConfig
 import com.crowinnovations.skypulseweather.data.local.WeatherDao
 import com.crowinnovations.skypulseweather.data.local.WeatherDatabase
 import com.crowinnovations.skypulseweather.data.remote.GeocodingApi
@@ -61,7 +62,7 @@ object AppModule {
                     throw IOException("Blocked insecure or non-public network target.")
                 }
                 val req = original.newBuilder()
-                    .header("User-Agent", "SkyPulseWeather/1.0 (+https://crowinnovations.com)")
+                    .header("User-Agent", "SkyPulseWeather/${BuildConfig.VERSION_NAME} (+https://crowinnovations.com)")
                     .header("Accept", "application/json, application/geo+json")
                     .build()
                 chain.proceed(req)

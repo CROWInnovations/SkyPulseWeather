@@ -1,10 +1,12 @@
 <resources>
     <string name="app_name">SkyPulse Weather</string>
+    <string name="widget_5x3_name">SkyPulse Expanded (5×3)</string>
     <string name="widget_5x2_name">SkyPulse Wide (5×2)</string>
     <string name="widget_name">SkyPulse Forecast (4×2)</string>
     <string name="widget_2x2_name">SkyPulse Square (2×2)</string>
     <string name="widget_2x1_name">SkyPulse Compact (2×1)</string>
     <string name="widget_1x1_name">SkyPulse Mini (1×1)</string>
+    <string name="widget_5x3_description">5×3 expanded weather, 3D sky &amp; swipeable 10-day forecast widget updated every 15 minutes.</string>
     <string name="widget_5x2_description">5×2 wide weather &amp; swipeable 10-day forecast widget updated every 15 minutes.</string>
     <string name="widget_description">Full weather &amp; swipeable 10-day forecast widget updated every 15 minutes.</string>
     <string name="widget_2x2_description">2×2 square weather widget showing temperature, humidity, feels-like, and high/low.</string>

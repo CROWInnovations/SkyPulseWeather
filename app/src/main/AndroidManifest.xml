@@ -64,6 +64,25 @@
             </intent-filter>
         </activity>
 
+        <!-- 5x3 Expanded Full & 10-Day Forecast Widget -->
+        <receiver
+            android:name=".widget.WeatherWidget5x3Receiver"
+            android:exported="true"
+            android:label="@string/widget_5x3_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.sec.android.widgetapp.APPWIDGET_RESIZE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.crowinnovations.skypulseweather.ACTION_REFRESH_WIDGET" />
+                <action android:name="com.crowinnovations.skypulseweather.ACTION_SCROLL_FORECAST" />
+                <data android:scheme="skypulse" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weather_widget_5x3_info" />
+        </receiver>
+
         <!-- 5x2 Wide Full & 10-Day Forecast Widget -->
         <receiver
             android:name=".widget.WeatherWidget5x2Receiver"

@@ -116,7 +116,7 @@ internal data class WidgetDataModel(
 
 /**
  * Publishes exact-sized Jetpack Glance `RemoteViews` for all SkyPulse widget receivers
- * (`5x2`, `4x2`, `2x2`, `2x1`, `1x1`) and attaches the root-level `RemoteCollectionItems` adapter
+ * (`5x3`, `5x2`, `4x2`, `2x2`, `2x1`, `1x1`) and attaches the root-level `RemoteCollectionItems` adapter
  * onto `R.id.widget_ten_day_list` so the 10-day forecast row can be swiped right and left natively.
  */
 object WeatherWidgetPublisher {
@@ -130,6 +130,7 @@ object WeatherWidgetPublisher {
     private val glanceComposer = GlanceRemoteViews()
 
     private val receiverClasses = listOf(
+        WeatherWidget5x3Receiver::class.java,
         WeatherWidget5x2Receiver::class.java,
         WeatherGlanceReceiver::class.java,
         WeatherWidget2x2Receiver::class.java,
@@ -167,7 +168,7 @@ object WeatherWidgetPublisher {
         )
         val repository = entryPoint.weatherRepository()
         val (locations, weatherMap, prefs) = repository.getWidgetInitialState()
-        val activeScrollOffset = (explicitScrollOffset ?: 0).safeClamp(0, 5)
+        val activeScrollOffset = (explicitScrollOffset ?: prefs.widgetForecastDayOffset).safeClamp(0, 5)
 
         val chosenLocation = locations.firstOrNull { it.id == prefs.activeLocationId }
             ?: locations.firstOrNull()
@@ -314,7 +315,7 @@ object WeatherWidgetPublisher {
                 fontSizeSp = effectiveClockSp,
                 belowDateFontSizeSp = effectiveDateBelowSp,
                 fontStyle = prefs.timeFontStyle,
-                textColor = prefs.timeTextColor,
+                textColorArgb = prefs.timeTextColorArgb,
                 datePosition = prefs.dateDisplayPosition
             )
         }
@@ -338,6 +339,7 @@ object WeatherWidgetPublisher {
             ((hDp - 40f) / hDp.coerceAtLeast(60f)).safeClamp(topReservedFraction + 0.18f, 0.72f)
         }
 
+        val isLargerThan2x2 = (wDp > 212f && hDp >= 108f) || (wDp >= 108f && hDp > 212f)
         val (targetW, targetH) = WidgetBitmapRenderer.targetCanvasSizeForAspect(wDp, hDp)
         val sceneBitmap = WidgetBitmapRenderer.renderWidgetSceneBackdrop(
             context = context,
@@ -349,7 +351,8 @@ object WeatherWidgetPublisher {
             widthPx = targetW,
             heightPx = targetH,
             topReservedFraction = topReservedFraction,
-            maxMoonBottomFraction = maxMoonBottomFraction
+            maxMoonBottomFraction = maxMoonBottomFraction,
+            suppressStaticRainStreaks = isLargerThan2x2
         )
 
         val isTiny1x1 = wDp < 106f && hDp < 106f
@@ -373,7 +376,14 @@ object WeatherWidgetPublisher {
                 heightPx = targetH,
                 topReservedFraction = topReservedFraction
             )
-            if (cloudFrames == null && sunRayFrames == null) {
+            val fallingRainCurtain = WidgetBitmapRenderer.renderSeamlessFallingRainCurtain(
+                condition = model.condition,
+                hasTornadoWarning = model.hasTornadoWarning,
+                isLargerThan2x2 = isLargerThan2x2,
+                widthPx = targetW,
+                heightPx = targetH
+            )
+            if (cloudFrames == null && sunRayFrames == null && fallingRainCurtain == null) {
                 null
             } else {
                 RemoteViews(context.packageName, R.layout.widget_cloud_motion).apply {
@@ -393,6 +403,14 @@ object WeatherWidgetPublisher {
                         setImageViewBitmap(R.id.widget_sun_pulse_frame_3, sunRayFrames.third)
                     } else {
                         setViewVisibility(R.id.widget_sun_pulse_flipper, View.GONE)
+                    }
+
+                    if (fallingRainCurtain != null) {
+                        setViewVisibility(R.id.widget_rain_splash_flipper, View.VISIBLE)
+                        setImageViewBitmap(R.id.widget_rain_splash_frame_1, fallingRainCurtain)
+                        setImageViewBitmap(R.id.widget_rain_splash_frame_2, fallingRainCurtain)
+                    } else {
+                        setViewVisibility(R.id.widget_rain_splash_flipper, View.GONE)
                     }
                 }
             }
@@ -486,6 +504,7 @@ object WeatherWidgetPublisher {
             providerClassName?.endsWith("WeatherWidget2x1Receiver") == true -> listOf(165f to 82f)
             providerClassName?.endsWith("WeatherWidget2x2Receiver") == true -> listOf(165f to 165f)
             providerClassName?.endsWith("WeatherWidget5x2Receiver") == true -> listOf(390f to 215f)
+            providerClassName?.endsWith("WeatherWidget5x3Receiver") == true -> listOf(390f to 310f)
             else -> listOf(320f to 215f)
         }
     }
@@ -496,9 +515,10 @@ private fun buildStyledTopClockRemoteViews(
     fontSizeSp: Float,
     belowDateFontSizeSp: Float,
     fontStyle: DisplayFontStyle,
-    textColor: DisplayTextColor,
+    textColorArgb: Int,
     datePosition: DateDisplayPosition
 ): RemoteViews {
+    val safeColorArgb = textColorArgb or 0xFF000000.toInt()
     val allClockIds = listOf(
         R.id.widget_clock_default,
         R.id.widget_clock_serif,
@@ -538,7 +558,7 @@ private fun buildStyledTopClockRemoteViews(
         setCharSequence(activeClockId, "setFormat12Hour", fmt12)
         setCharSequence(activeClockId, "setFormat24Hour", fmt24)
         setTextViewTextSize(activeClockId, TypedValue.COMPLEX_UNIT_SP, fontSizeSp)
-        setTextColor(activeClockId, textColor.argb)
+        setTextColor(activeClockId, safeColorArgb)
 
         if (datePosition == DateDisplayPosition.BELOW_TIME) {
             setViewVisibility(R.id.widget_date_below_container, View.VISIBLE)
@@ -546,7 +566,7 @@ private fun buildStyledTopClockRemoteViews(
                 setViewVisibility(id, if (id == activeBelowDateId) View.VISIBLE else View.GONE)
             }
             setTextViewTextSize(activeBelowDateId, TypedValue.COMPLEX_UNIT_SP, belowDateFontSizeSp)
-            setTextColor(activeBelowDateId, textColor.argb)
+            setTextColor(activeBelowDateId, safeColorArgb)
         } else {
             setViewVisibility(R.id.widget_date_below_container, View.GONE)
         }
@@ -836,6 +856,9 @@ private fun WidgetCardSurface(
                 val miniClockUsedH = if (topClockRemoteViews != null) topClockHeightDp.value else 13f
                 val miniHlUsedH = if (heightDp >= 64f) 13f else 0f
                 val miniAvailH = (heightDp - 10f - miniClockUsedH - miniHlUsedH).coerceAtLeast(16f)
+                val miniCityShort = model.locationName.substringBefore(",")
+                val miniCitySp = ((widthDp - 10f) / ((miniCityShort.length * 0.60f + 1.4f) * fontScale))
+                    .safeClamp(7.6f, 9.8f).sp
                 val miniTempBmp = WidgetBitmapRenderer.renderStyledTemperatureBitmap(
                     context = context,
                     tempText = model.currentTemp,
@@ -845,7 +868,7 @@ private fun WidgetCardSurface(
                     maxWidthDp = (widthDp - 10f).coerceAtLeast(28f),
                     maxHeightDp = miniAvailH,
                     fontStyle = prefs.widgetTempFontStyle,
-                    textColorArgb = prefs.widgetTempTextColor.argb
+                    textColorArgb = prefs.widgetTempTextColorArgb
                 )
                 Column(
                     modifier = GlanceModifier
@@ -863,11 +886,11 @@ private fun WidgetCardSurface(
                         )
                     } else {
                         Text(
-                            text = model.locationName.substringBefore(","),
+                            text = miniCityShort,
                             maxLines = 1,
                             style = TextStyle(
                                 color = secondaryColor,
-                                fontSize = 9.5.sp,
+                                fontSize = miniCitySp,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center
                             )
@@ -910,11 +933,14 @@ private fun WidgetCardSurface(
                     requestedRealSp = stripTempSp * hostResizeRatio,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale,
-                    maxWidthDp = (widthDp * 0.44f).coerceAtLeast(42f),
+                    maxWidthDp = (widthDp * 0.40f).coerceAtLeast(42f),
                     maxHeightDp = stripAvailH,
                     fontStyle = prefs.widgetTempFontStyle,
-                    textColorArgb = prefs.widgetTempTextColor.argb
+                    textColorArgb = prefs.widgetTempTextColorArgb
                 )
+                val stripAvailCityW = (widthDp - stripTempBmp.widthDp - 28f).coerceAtLeast(56f)
+                val stripCitySp = (stripAvailCityW / ((model.locationName.length * 0.60f + 1.5f) * fontScale))
+                    .safeClamp(9.8f, 13.0f).sp
                 Column(
                     modifier = GlanceModifier
                         .fillMaxSize()
@@ -939,9 +965,10 @@ private fun WidgetCardSurface(
                             Text(
                                 text = model.locationName,
                                 maxLines = 1,
+                                modifier = GlanceModifier.fillMaxWidth(),
                                 style = TextStyle(
                                     color = primaryColor,
-                                    fontSize = 12.sp,
+                                    fontSize = stripCitySp,
                                     fontWeight = FontWeight.Bold
                                 )
                             )
@@ -973,8 +1000,11 @@ private fun WidgetCardSurface(
                 val sqClockUsedH = if (topClockRemoteViews != null) topClockHeightDp.value + 2f else 0f
                 val sqTelemetryH = if (heightDp >= 158f && model.windAndUvLine.isNotEmpty()) 44f else 31f
                 val sqAvailH = (heightDp - 12f - sqClockUsedH - 18f - sqTelemetryH - 4f).coerceAtLeast(22f)
+                val sqAvailCityRowW = (widthDp - 42f).coerceAtLeast(72f)
+                val sqMaxCitySp = (13.0f / hostResizeRatio).safeClamp(11.5f, 16.0f)
+                val sqCitySpFloat = (sqAvailCityRowW / ((model.locationName.length * 0.62f + 1.6f) * fontScale))
+                    .safeClamp(10.0f, sqMaxCitySp)
                 val sqAvailLeftW = (widthDp * 0.64f).coerceAtLeast(64f)
-                val sqCitySpFloat = (12f / hostResizeRatio).safeClamp(11f, 16f)
                 val sqTempBmp = WidgetBitmapRenderer.renderStyledTemperatureBitmap(
                     context = context,
                     tempText = model.currentTemp,
@@ -984,17 +1014,22 @@ private fun WidgetCardSurface(
                     maxWidthDp = sqAvailLeftW,
                     maxHeightDp = sqAvailH,
                     fontStyle = prefs.widgetTempFontStyle,
-                    textColorArgb = prefs.widgetTempTextColor.argb
+                    textColorArgb = prefs.widgetTempTextColorArgb
                 )
                 val sqCityWidthDp = WidgetBitmapRenderer.measureWidgetTextWidthDp(
                     context = context,
                     text = model.locationName,
                     virtualFontSizeSp = sqCitySpFloat,
                     fontScale = fontScale
-                ).coerceAtMost(sqAvailLeftW)
+                ).coerceAtMost(sqAvailCityRowW)
                 val sqOpticalLeadDp = (sqTempBmp.heightDp * 0.10f).safeClamp(0f, 8f)
-                val sqGroupWidthDp = maxOf(sqCityWidthDp, sqTempBmp.widthDp + sqOpticalLeadDp)
-                    .coerceAtMost(widthDp - 20f)
+                val sqTempVisualW = sqTempBmp.widthDp + sqOpticalLeadDp
+                val sqCityLeadDp = ((sqTempVisualW - sqCityWidthDp) * 0.5f).coerceAtLeast(0f)
+                val sqTempLeadDp = if (sqCityWidthDp >= sqTempVisualW) {
+                    ((sqCityWidthDp - sqTempBmp.widthDp) * 0.5f + sqOpticalLeadDp * 0.5f).coerceAtLeast(0f)
+                } else {
+                    sqOpticalLeadDp
+                }
 
                 Column(
                     modifier = GlanceModifier
@@ -1014,37 +1049,22 @@ private fun WidgetCardSurface(
                     }
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.Top
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(
-                            modifier = GlanceModifier.width(sqGroupWidthDp.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = model.locationName,
-                                maxLines = 1,
-                                modifier = GlanceModifier.fillMaxWidth(),
-                                style = TextStyle(
-                                    color = primaryColor,
-                                    fontSize = sqCitySpFloat.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    textAlign = TextAlign.Center
-                                )
-                            )
-                            Spacer(modifier = GlanceModifier.height(2.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Spacer(modifier = GlanceModifier.width(sqOpticalLeadDp.dp))
-                                Image(
-                                    provider = ImageProvider(sqTempBmp.bitmap),
-                                    contentDescription = model.currentTemp,
-                                    contentScale = ContentScale.Fit,
-                                    modifier = GlanceModifier
-                                        .width(sqTempBmp.widthDp.dp)
-                                        .height(sqTempBmp.heightDp.dp)
-                                )
-                            }
+                        if (sqCityLeadDp > 0.5f) {
+                            Spacer(modifier = GlanceModifier.width(sqCityLeadDp.dp))
                         }
-                        Spacer(modifier = GlanceModifier.defaultWeight())
+                        Text(
+                            text = model.locationName,
+                            maxLines = 1,
+                            modifier = GlanceModifier.defaultWeight(),
+                            style = TextStyle(
+                                color = primaryColor,
+                                fontSize = sqCitySpFloat.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Start
+                            )
+                        )
                         Text(
                             text = "↻",
                             maxLines = 1,
@@ -1060,6 +1080,20 @@ private fun WidgetCardSurface(
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
                             )
+                        )
+                    }
+                    Spacer(modifier = GlanceModifier.height(2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (sqTempLeadDp > 0.5f) {
+                            Spacer(modifier = GlanceModifier.width(sqTempLeadDp.dp))
+                        }
+                        Image(
+                            provider = ImageProvider(sqTempBmp.bitmap),
+                            contentDescription = model.currentTemp,
+                            contentScale = ContentScale.Fit,
+                            modifier = GlanceModifier
+                                .width(sqTempBmp.widthDp.dp)
+                                .height(sqTempBmp.heightDp.dp)
                         )
                     }
 
@@ -1125,9 +1159,16 @@ private fun WidgetCardSurface(
                     .safeClamp(92f, (widthDp * 0.45f).coerceAtLeast(92f))
                 val rightCelestialColDp = rightSpaceFloat.dp
 
-                val availLeftWidthDp = (widthDp - rightSpaceFloat - 22f).coerceAtLeast(60f)
-                val maxCitySpCap = (16.0f / hostResizeRatio).safeClamp(14.5f, 20.0f)
-                val locNameSpFloat = ((availLeftWidthDp - 24f) / ((model.locationName.length * 0.54f + 1.4f) * fontScale))
+                val availLeftWidthDp = (widthDp - rightSpaceFloat - 22f).coerceAtLeast(80f)
+                val hasNightMoonStage = !model.isDay && !model.hasTornadoWarning && model.highLowLabeled.isNotEmpty()
+                val isSunnyDayStage = model.isDay && model.condition == WeatherCondition.CLEAR_DAY && !model.hasTornadoWarning
+                val availCityRowWidthDp = when {
+                    hasNightMoonStage -> (availLeftWidthDp - 24f).coerceAtLeast(110f)
+                    isSunnyDayStage -> (widthDp * 0.66f).coerceAtLeast(130f)
+                    else -> (widthDp - 48f).coerceAtLeast(140f)
+                }
+                val maxCitySpCap = (16.5f / hostResizeRatio).safeClamp(14.5f, 20.0f)
+                val locNameSpFloat = (availCityRowWidthDp / ((model.locationName.length * 0.62f + 1.8f) * fontScale))
                     .safeClamp(11.0f, maxCitySpCap)
                 val locNameSp = locNameSpFloat.sp
 
@@ -1161,25 +1202,28 @@ private fun WidgetCardSurface(
                     maxWidthDp = (availLeftWidthDp - 8f).coerceAtLeast(52f),
                     maxHeightDp = maxHeroTempHeightDp,
                     fontStyle = prefs.widgetTempFontStyle,
-                    textColorArgb = prefs.widgetTempTextColor.argb
+                    textColorArgb = prefs.widgetTempTextColorArgb
                 )
 
-                val refreshSlotWidthDp = if (model.updatedLabel.isNotEmpty()) 24f else 0f
-                val maxGroupWidthDp = (availLeftWidthDp - refreshSlotWidthDp).coerceAtLeast(52f)
                 val cityTextWidthDp = WidgetBitmapRenderer.measureWidgetTextWidthDp(
                     context = context,
                     text = model.locationName,
                     virtualFontSizeSp = locNameSpFloat,
                     fontScale = fontScale
-                ).coerceAtMost(maxGroupWidthDp)
+                ).coerceAtMost(availCityRowWidthDp)
                 // Optical balance for trailing superscript '°' so the digits sit visually dead-center under City, State
                 val tempOpticalLeadDp = if (model.currentTemp.endsWith("°")) {
                     (heroTempBmp.heightDp * 0.11f).safeClamp(2f, 12f)
                 } else {
                     0f
                 }
-                val cityTempGroupWidthDp = maxOf(cityTextWidthDp, heroTempBmp.widthDp + tempOpticalLeadDp)
-                    .coerceAtMost(maxGroupWidthDp)
+                val tempVisualWidthDp = heroTempBmp.widthDp + tempOpticalLeadDp
+                val cityLeadOffsetDp = ((tempVisualWidthDp - cityTextWidthDp) * 0.5f).coerceAtLeast(0f)
+                val tempLeadOffsetDp = if (cityTextWidthDp >= tempVisualWidthDp) {
+                    ((cityTextWidthDp - heroTempBmp.widthDp) * 0.5f + tempOpticalLeadDp * 0.5f).coerceAtLeast(0f)
+                } else {
+                    tempOpticalLeadDp
+                }
 
                 // Moon Phase centered directly under the large 3D Moon in the right-hand open space
                 val moonPhaseSpFloat = (rightSpaceFloat / (10.2f * fontScale))
@@ -1195,7 +1239,7 @@ private fun WidgetCardSurface(
                 val moonPhaseTopSpacerDp = desiredMoonPhaseTop
                     .safeClamp(8f, (stageAvailableHeightDp - moonPhaseHeightFloat - 1f).coerceAtLeast(8f)).dp
 
-                val moonPhaseRemoteViews = if (!model.isDay && !model.hasTornadoWarning && model.highLowLabeled.isNotEmpty()) {
+                val moonPhaseRemoteViews = if (hasNightMoonStage) {
                     RemoteViews(context.packageName, R.layout.widget_celestial_labels).apply {
                         setViewVisibility(R.id.widget_moon_phase_label, View.VISIBLE)
                         setTextViewText(R.id.widget_moon_phase_label, model.moonPhase.phaseName)
@@ -1268,8 +1312,8 @@ private fun WidgetCardSurface(
                         }
 
                     if (moonPhaseRemoteViews != null) {
-                        // Nighttime 2-column stage: Left holds City, Temp & Telemetry; Right gives the 3D Moon
-                        // the full open starry stage with Moon Phase centered directly underneath it.
+                        // Nighttime 2-column stage: Left holds unconstrained City, centered Temp & Telemetry;
+                        // Right gives the 3D Moon the open starry stage with Moon Phase centered underneath it.
                         Row(
                             modifier = GlanceModifier
                                 .fillMaxWidth()
@@ -1284,39 +1328,22 @@ private fun WidgetCardSurface(
                             ) {
                                 Row(
                                     modifier = GlanceModifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.Top
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column(
-                                        modifier = GlanceModifier.width(cityTempGroupWidthDp.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(
-                                            text = model.locationName,
-                                            maxLines = 1,
-                                            modifier = GlanceModifier.fillMaxWidth(),
-                                            style = TextStyle(
-                                                color = primaryColor,
-                                                fontSize = locNameSp,
-                                                fontWeight = FontWeight.Bold,
-                                                textAlign = TextAlign.Center
-                                            )
-                                        )
-                                        Spacer(modifier = GlanceModifier.height(2.dp))
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            if (tempOpticalLeadDp > 0f) {
-                                                Spacer(modifier = GlanceModifier.width(tempOpticalLeadDp.dp))
-                                            }
-                                            Image(
-                                                provider = ImageProvider(heroTempBmp.bitmap),
-                                                contentDescription = model.currentTemp,
-                                                contentScale = ContentScale.Fit,
-                                                modifier = GlanceModifier
-                                                    .width(heroTempBmp.widthDp.dp)
-                                                    .height(heroTempBmp.heightDp.dp)
-                                            )
-                                        }
+                                    if (cityLeadOffsetDp > 0.5f) {
+                                        Spacer(modifier = GlanceModifier.width(cityLeadOffsetDp.dp))
                                     }
-                                    Spacer(modifier = GlanceModifier.defaultWeight())
+                                    Text(
+                                        text = model.locationName,
+                                        maxLines = 1,
+                                        modifier = GlanceModifier.defaultWeight(),
+                                        style = TextStyle(
+                                            color = primaryColor,
+                                            fontSize = locNameSp,
+                                            fontWeight = FontWeight.Bold,
+                                            textAlign = TextAlign.Start
+                                        )
+                                    )
                                     if (model.updatedLabel.isNotEmpty()) {
                                         Text(
                                             text = "↻",
@@ -1335,6 +1362,20 @@ private fun WidgetCardSurface(
                                             )
                                         )
                                     }
+                                }
+                                Spacer(modifier = GlanceModifier.height(2.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (tempLeadOffsetDp > 0.5f) {
+                                        Spacer(modifier = GlanceModifier.width(tempLeadOffsetDp.dp))
+                                    }
+                                    Image(
+                                        provider = ImageProvider(heroTempBmp.bitmap),
+                                        contentDescription = model.currentTemp,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = GlanceModifier
+                                            .width(heroTempBmp.widthDp.dp)
+                                            .height(heroTempBmp.heightDp.dp)
+                                    )
                                 }
 
                                 Spacer(modifier = GlanceModifier.defaultWeight())
@@ -1387,74 +1428,64 @@ private fun WidgetCardSurface(
                             }
                         }
                     } else {
-                        // Daytime / Tornado layout: Top-Left City + Temp, Bottom Full-Width Telemetry
-                        Row(
+                        // Daytime / Storm layout: Full-width unconstrained City + top-right Refresh, Centered Temp, Bottom Full-Width Telemetry
+                        Column(
                             modifier = GlanceModifier
                                 .fillMaxWidth()
                                 .defaultWeight(),
-                            verticalAlignment = Alignment.Top
+                            horizontalAlignment = Alignment.Start
                         ) {
-                            Column(
-                                modifier = GlanceModifier.defaultWeight(),
-                                horizontalAlignment = Alignment.Start
+                            Row(
+                                modifier = GlanceModifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = GlanceModifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.Top
-                                ) {
-                                    Column(
-                                        modifier = GlanceModifier.width(cityTempGroupWidthDp.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(
-                                            text = model.locationName,
-                                            maxLines = 1,
-                                            modifier = GlanceModifier.fillMaxWidth(),
-                                            style = TextStyle(
-                                                color = primaryColor,
-                                                fontSize = locNameSp,
-                                                fontWeight = FontWeight.Bold,
-                                                textAlign = TextAlign.Center
-                                            )
-                                        )
-                                        Spacer(modifier = GlanceModifier.height(2.dp))
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            if (tempOpticalLeadDp > 0f) {
-                                                Spacer(modifier = GlanceModifier.width(tempOpticalLeadDp.dp))
-                                            }
-                                            Image(
-                                                provider = ImageProvider(heroTempBmp.bitmap),
-                                                contentDescription = model.currentTemp,
-                                                contentScale = ContentScale.Fit,
-                                                modifier = GlanceModifier
-                                                    .width(heroTempBmp.widthDp.dp)
-                                                    .height(heroTempBmp.heightDp.dp)
-                                            )
-                                        }
-                                    }
-                                    Spacer(modifier = GlanceModifier.defaultWeight())
-                                    if (model.updatedLabel.isNotEmpty()) {
-                                        Text(
-                                            text = "↻",
-                                            maxLines = 1,
-                                            modifier = GlanceModifier
-                                                .clickable(
-                                                    actionSendBroadcast(
-                                                        createRefreshWidgetBroadcastIntent(context, model.locationId)
-                                                    )
+                                if (cityLeadOffsetDp > 0.5f) {
+                                    Spacer(modifier = GlanceModifier.width(cityLeadOffsetDp.dp))
+                                }
+                                Text(
+                                    text = model.locationName,
+                                    maxLines = 1,
+                                    modifier = GlanceModifier.defaultWeight(),
+                                    style = TextStyle(
+                                        color = primaryColor,
+                                        fontSize = locNameSp,
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Start
+                                    )
+                                )
+                                if (model.updatedLabel.isNotEmpty()) {
+                                    Text(
+                                        text = "↻",
+                                        maxLines = 1,
+                                        modifier = GlanceModifier
+                                            .clickable(
+                                                actionSendBroadcast(
+                                                    createRefreshWidgetBroadcastIntent(context, model.locationId)
                                                 )
-                                                .padding(horizontal = 4.dp),
-                                            style = TextStyle(
-                                                color = rainTint,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold
                                             )
+                                            .padding(horizontal = 4.dp),
+                                        style = TextStyle(
+                                            color = rainTint,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold
                                         )
-                                    }
+                                    )
                                 }
                             }
-
-                            Spacer(modifier = GlanceModifier.width(rightCelestialColDp))
+                            Spacer(modifier = GlanceModifier.height(2.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (tempLeadOffsetDp > 0.5f) {
+                                    Spacer(modifier = GlanceModifier.width(tempLeadOffsetDp.dp))
+                                }
+                                Image(
+                                    provider = ImageProvider(heroTempBmp.bitmap),
+                                    contentDescription = model.currentTemp,
+                                    contentScale = ContentScale.Fit,
+                                    modifier = GlanceModifier
+                                        .width(heroTempBmp.widthDp.dp)
+                                        .height(heroTempBmp.heightDp.dp)
+                                )
+                            }
                         }
 
                         Column(

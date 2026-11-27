@@ -262,6 +262,15 @@ class WeatherDomainTest {
         }
         assertEquals(74, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_TIME_FONT_SP)
         assertEquals(74, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_TEMP_FONT_SP)
+        assertEquals(10, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_FORECAST_FONT_BOOST_SP)
+        assertEquals(127, com.crowinnovations.skypulseweather.ui.components.HoneycombColorWheel.wheelCells.size)
+        assertEquals(
+            "#FFFFFF",
+            com.crowinnovations.skypulseweather.ui.components.HoneycombColorWheel.formatHex(
+                com.crowinnovations.skypulseweather.ui.components.HoneycombColorWheel.wheelCells
+                    .first { it.q == 0 && it.r == 0 }.argb
+            )
+        )
         assertEquals(4, DisplayFontStyle.entries.size)
         assertEquals(6, DisplayTextColor.entries.size)
         assertEquals(

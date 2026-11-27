@@ -331,9 +331,9 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun setTimeTextColor(color: DisplayTextColor) {
+    fun setTimeTextColorArgb(argb: Int) {
         viewModelScope.launch {
-            prefsRepository.setTimeTextColor(color)
+            prefsRepository.setTimeTextColorArgb(argb)
             repository.notifyWidgetsChanged()
         }
     }
@@ -352,9 +352,21 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun setWidgetTempTextColor(color: DisplayTextColor) {
+    fun adjustForecastTransparencyDelta(deltaPct: Int) {
         viewModelScope.launch {
-            prefsRepository.setWidgetTempTextColor(color)
+            prefsRepository.adjustForecastTransparencyDelta(deltaPct)
+        }
+    }
+
+    fun adjustForecastFontBoost(deltaSp: Int) {
+        viewModelScope.launch {
+            prefsRepository.adjustForecastFontBoost(deltaSp)
+        }
+    }
+
+    fun setWidgetTempTextColorArgb(argb: Int) {
+        viewModelScope.launch {
+            prefsRepository.setWidgetTempTextColorArgb(argb)
             repository.notifyWidgetsChanged()
         }
     }

@@ -1,10 +1,13 @@
 package com.crowinnovations.skypulseweather.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -65,6 +68,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -72,9 +76,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -100,6 +110,15 @@ import com.crowinnovations.skypulseweather.domain.TempUnit
 import com.crowinnovations.skypulseweather.domain.ThemeMode
 import com.crowinnovations.skypulseweather.domain.WeatherSnapshot
 import com.crowinnovations.skypulseweather.domain.WindUnit
+import com.crowinnovations.skypulseweather.domain.safeClamp
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -397,10 +416,12 @@ fun SettingsDialog(
     onDateDisplayPositionSelect: (DateDisplayPosition) -> Unit,
     onAdjustTimeFontSize: (Int) -> Unit,
     onTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
-    onTimeTextColorSelect: (DisplayTextColor) -> Unit,
+    onTimeTextColorSelect: (Int) -> Unit,
     onAdjustWidgetTempFontSize: (Int) -> Unit,
     onWidgetTempFontStyleSelect: (DisplayFontStyle) -> Unit,
-    onWidgetTempTextColorSelect: (DisplayTextColor) -> Unit,
+    onWidgetTempTextColorSelect: (Int) -> Unit,
+    onAdjustForecastTransparency: (Int) -> Unit = {},
+    onAdjustForecastFontBoost: (Int) -> Unit = {},
     onGatewaySave: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -574,8 +595,45 @@ fun SettingsDialog(
                             }
                         }
 
-                        // Group 2: Widget Temperature Display
-                        SettingsGroupCard(title = "WIDGET TEMPERATURE", hairline = hairline) {
+                        // Group 1B: Full-Screen Hourly & 10-Day Forecast Readability
+                        SettingsGroupCard(title = "HOURLY & 10-DAY FORECAST", hairline = hairline) {
+                            CompactSettingRow(label = "Transparency") {
+                                val trDelta = preferences.forecastTransparencyDeltaPct
+                                val trLabel = when {
+                                    trDelta == 0 -> "Default"
+                                    trDelta > 0 -> "+${trDelta}%"
+                                    else -> "${trDelta}%"
+                                }
+                                FontBoostStepper(
+                                    currentLabel = trLabel,
+                                    canDecrease = trDelta > UserPreferencesRepository.MIN_FORECAST_TRANSPARENCY_DELTA_PCT,
+                                    canIncrease = trDelta < UserPreferencesRepository.MAX_FORECAST_TRANSPARENCY_DELTA_PCT,
+                                    onDecrease = {
+                                        onAdjustForecastTransparency(-UserPreferencesRepository.FORECAST_TRANSPARENCY_STEP_PCT)
+                                    },
+                                    onIncrease = {
+                                        onAdjustForecastTransparency(UserPreferencesRepository.FORECAST_TRANSPARENCY_STEP_PCT)
+                                    }
+                                )
+                            }
+                            CompactSettingRow(label = "Font Size") {
+                                val boost = preferences.forecastFontBoostSp
+                                FontBoostStepper(
+                                    currentLabel = if (boost == 0) "Default" else "+${boost}sp",
+                                    canDecrease = boost > UserPreferencesRepository.MIN_FORECAST_FONT_BOOST_SP,
+                                    canIncrease = boost < UserPreferencesRepository.MAX_FORECAST_FONT_BOOST_SP,
+                                    onDecrease = {
+                                        onAdjustForecastFontBoost(-UserPreferencesRepository.FORECAST_FONT_BOOST_STEP_SP)
+                                    },
+                                    onIncrease = {
+                                        onAdjustForecastFontBoost(UserPreferencesRepository.FORECAST_FONT_BOOST_STEP_SP)
+                                    }
+                                )
+                            }
+                        }
+
+                        // Group 2: Temperature Display (Full Screen & Widget)
+                        SettingsGroupCard(title = "TEMPERATURE DISPLAY", hairline = hairline) {
                             CompactSettingRow(label = "Font Size") {
                                 FontSizeStepper(
                                     currentSp = preferences.widgetTempFontSizeSp,
@@ -601,9 +659,10 @@ fun SettingsDialog(
                                 )
                             }
                             CompactSettingRow(label = "Color") {
-                                ColorSwatchSelector(
-                                    selected = preferences.widgetTempTextColor,
-                                    onSelect = onWidgetTempTextColorSelect
+                                ColorWheelPickerButton(
+                                    selectedArgb = preferences.widgetTempTextColorArgb,
+                                    dialogTitle = "Pick a Color:",
+                                    onColorSelected = onWidgetTempTextColorSelect
                                 )
                             }
                         }
@@ -656,9 +715,10 @@ fun SettingsDialog(
                                         )
                                     }
                                     CompactSettingRow(label = "Color") {
-                                        ColorSwatchSelector(
-                                            selected = preferences.timeTextColor,
-                                            onSelect = onTimeTextColorSelect
+                                        ColorWheelPickerButton(
+                                            selectedArgb = preferences.timeTextColorArgb,
+                                            dialogTitle = "Pick a Color:",
+                                            onColorSelected = onTimeTextColorSelect
                                         )
                                     }
                                 }
@@ -971,42 +1031,431 @@ private fun CompactSegmentedControl(
     }
 }
 
+internal data class HexColorCell(
+    val q: Int,
+    val r: Int,
+    val unitX: Float,
+    val unitY: Float,
+    val argb: Int,
+    val isGrayscaleStrip: Boolean = false
+)
+
+internal object HoneycombColorWheel {
+    const val RADIUS = 6
+    private val SQRT_3 = sqrt(3f)
+
+    val wheelCells: List<HexColorCell> by lazy {
+        val list = ArrayList<HexColorCell>(127)
+        for (r in -RADIUS..RADIUS) {
+            val qMin = maxOf(-RADIUS, -r - RADIUS)
+            val qMax = minOf(RADIUS, -r + RADIUS)
+            for (q in qMin..qMax) {
+                val ux = SQRT_3 * (q + r * 0.5f)
+                val uy = 1.5f * r
+                val argb = if (q == 0 && r == 0) {
+                    0xFFFFFFFF.toInt()
+                } else {
+                    val angleDeg = Math.toDegrees(atan2(uy.toDouble(), ux.toDouble())).toFloat()
+                    val hue = ((angleDeg - 60f) % 360f + 360f) % 360f
+                    val ring = maxOf(abs(q), abs(r), abs(q + r)).toFloat() / RADIUS.toFloat()
+                    val radial = (hypot(ux, uy) / (RADIUS * SQRT_3)).safeClamp(0f, 1f)
+                    val t = (0.55f * radial + 0.45f * ring).safeClamp(0.05f, 1f)
+                    val (sat, light) = if (t <= 0.56f) {
+                        val p = (t / 0.56f).safeClamp(0f, 1f)
+                        1.0f to (0.94f - 0.44f * p)
+                    } else {
+                        val p = ((t - 0.56f) / 0.44f).safeClamp(0f, 1f)
+                        (1.0f - 0.08f * p) to (0.50f - 0.30f * p)
+                    }
+                    hslToArgb(hue, sat, light)
+                }
+                list.add(HexColorCell(q = q, r = r, unitX = ux, unitY = uy, argb = argb))
+            }
+        }
+        list
+    }
+
+    val grayscaleCells: List<HexColorCell> by lazy {
+        val grays = intArrayOf(
+            0xFFFFFFFF.toInt(),
+            0xFFE2E8F0.toInt(),
+            0xFFCBD5E1.toInt(),
+            0xFF94A3B8.toInt(),
+            0xFF64748B.toInt(),
+            0xFF475569.toInt(),
+            0xFF334155.toInt(),
+            0xFF1E293B.toInt(),
+            0xFF000000.toInt()
+        )
+        val mid = (grays.size - 1) / 2f
+        val rowY = 1.5f * RADIUS + 2.35f
+        grays.mapIndexed { idx, argb ->
+            HexColorCell(
+                q = idx - 4,
+                r = RADIUS + 2,
+                unitX = (idx - mid) * SQRT_3 * 1.06f,
+                unitY = rowY,
+                argb = argb,
+                isGrayscaleStrip = true
+            )
+        }
+    }
+
+    val allCells: List<HexColorCell> by lazy { wheelCells + grayscaleCells }
+
+    fun findClosestCellIndex(targetArgb: Int): Int {
+        val tr = (targetArgb shr 16) and 0xFF
+        val tg = (targetArgb shr 8) and 0xFF
+        val tb = targetArgb and 0xFF
+        var bestIdx = 0
+        var bestDist = Int.MAX_VALUE
+        allCells.forEachIndexed { idx, cell ->
+            val cr = (cell.argb shr 16) and 0xFF
+            val cg = (cell.argb shr 8) and 0xFF
+            val cb = cell.argb and 0xFF
+            val dr = tr - cr
+            val dg = tg - cg
+            val db = tb - cb
+            val dist = dr * dr + dg * dg + db * db
+            if (dist < bestDist) {
+                bestDist = dist
+                bestIdx = idx
+            }
+        }
+        return bestIdx
+    }
+
+    fun formatHex(argb: Int): String {
+        val rgb = argb and 0xFFFFFF
+        return String.format("#%06X", rgb)
+    }
+
+    private fun hslToArgb(h: Float, s: Float, l: Float): Int {
+        val c = (1f - abs(2f * l - 1f)) * s
+        val x = c * (1f - abs((h / 60f) % 2f - 1f))
+        val m = l - c * 0.5f
+        val (r1, g1, b1) = when {
+            h < 60f -> Triple(c, x, 0f)
+            h < 120f -> Triple(x, c, 0f)
+            h < 180f -> Triple(0f, c, x)
+            h < 240f -> Triple(0f, x, c)
+            h < 300f -> Triple(x, 0f, c)
+            else -> Triple(c, 0f, x)
+        }
+        val r = ((r1 + m) * 255f).roundToInt().safeClamp(0, 255)
+        val g = ((g1 + m) * 255f).roundToInt().safeClamp(0, 255)
+        val b = ((b1 + m) * 255f).roundToInt().safeClamp(0, 255)
+        return (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+    }
+}
+
 @Composable
-private fun ColorSwatchSelector(
-    selected: DisplayTextColor,
-    onSelect: (DisplayTextColor) -> Unit
+private fun ColorWheelPickerButton(
+    selectedArgb: Int,
+    dialogTitle: String,
+    onColorSelected: (Int) -> Unit
 ) {
+    var showWheelDialog by rememberSaveable { mutableStateOf(false) }
+    val safeArgb = selectedArgb or 0xFF000000.toInt()
+    val swatchColor = Color(safeArgb)
+    val pillShape = RoundedCornerShape(8.dp)
+    val hexText = HoneycombColorWheel.formatHex(safeArgb)
+
     Row(
+        modifier = Modifier
+            .clip(pillShape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.60f))
+            .border(
+                width = 0.8.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f),
+                shape = pillShape
+            )
+            .clickable { showWheelDialog = true }
+            .heightIn(min = 27.dp)
+            .padding(start = 7.dp, end = 6.dp, top = 3.dp, bottom = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        DisplayTextColor.entries.forEach { option ->
-            val isSelected = option == selected
-            val swatchColor = Color(option.argb)
-            Box(
-                contentAlignment = Alignment.Center,
+        Box(
+            modifier = Modifier
+                .size(17.dp)
+                .clip(CircleShape)
+                .background(swatchColor)
+                .border(1.dp, Color(0x880F172A), CircleShape)
+        )
+        SingleLineText(
+            text = hexText,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Icon(
+            imageVector = Icons.Default.ArrowDropDown,
+            contentDescription = "Open color wheel",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+
+    if (showWheelDialog) {
+        HoneycombColorPickerDialog(
+            title = dialogTitle,
+            initialArgb = safeArgb,
+            onDismiss = { showWheelDialog = false },
+            onSelectColor = { chosenArgb ->
+                onColorSelected(chosenArgb)
+                showWheelDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun HoneycombColorPickerDialog(
+    title: String,
+    initialArgb: Int,
+    onDismiss: () -> Unit,
+    onSelectColor: (Int) -> Unit
+) {
+    val cells = remember { HoneycombColorWheel.allCells }
+    var selectedCellIdx by rememberSaveable(initialArgb) {
+        mutableIntStateOf(HoneycombColorWheel.findClosestCellIndex(initialArgb))
+    }
+    var draftArgb by rememberSaveable(initialArgb) {
+        mutableIntStateOf(initialArgb or 0xFF000000.toInt())
+    }
+    val hairline = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp)
+                .widthIn(max = 356.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, hairline)
+        ) {
+            Column(
                 modifier = Modifier
-                    .size(21.dp)
-                    .clip(CircleShape)
-                    .background(swatchColor)
-                    .border(
-                        width = if (isSelected) 2.dp else 0.8.dp,
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            Color(0x660F172A)
-                        },
-                        shape = CircleShape
-                    )
-                    .clickable { onSelect(option) }
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = option.label,
-                        tint = Color(0xFF0F172A),
-                        modifier = Modifier.size(12.dp)
+                SingleLineText(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1.02f)
+                ) {
+                    val hexPath = remember { Path() }
+
+                    fun buildHexPolygon(path: Path, cx: Float, cy: Float, radius: Float) {
+                        path.reset()
+                        for (i in 0 until 6) {
+                            val angleRad = Math.toRadians((60.0 * i - 30.0))
+                            val vx = cx + radius * cos(angleRad).toFloat()
+                            val vy = cy + radius * sin(angleRad).toFloat()
+                            if (i == 0) path.moveTo(vx, vy) else path.lineTo(vx, vy)
+                        }
+                        path.close()
+                    }
+
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(cells) {
+                                fun pickAt(offset: Offset) {
+                                    val w = size.width.toFloat()
+                                    val h = size.height.toFloat()
+                                    if (w <= 0f || h <= 0f) return
+                                    val cellR = min(w / 23.4f, h / 23.6f)
+                                    val originX = w * 0.5f
+                                    val originY = h * 0.455f
+                                    var nearestIdx = -1
+                                    var nearestDistSq = Float.MAX_VALUE
+                                    val maxHitDistSq = (cellR * 1.25f) * (cellR * 1.25f)
+                                    cells.forEachIndexed { idx, cell ->
+                                        val cx = originX + cell.unitX * cellR
+                                        val cy = originY + cell.unitY * cellR
+                                        val dx = offset.x - cx
+                                        val dy = offset.y - cy
+                                        val d2 = dx * dx + dy * dy
+                                        if (d2 < nearestDistSq && d2 <= maxHitDistSq) {
+                                            nearestDistSq = d2
+                                            nearestIdx = idx
+                                        }
+                                    }
+                                    if (nearestIdx >= 0) {
+                                        selectedCellIdx = nearestIdx
+                                        draftArgb = cells[nearestIdx].argb
+                                    }
+                                }
+
+                                detectTapGestures { pos -> pickAt(pos) }
+                            }
+                            .pointerInput(cells) {
+                                detectDragGestures(
+                                    onDragStart = { pos ->
+                                        val w = size.width.toFloat()
+                                        val h = size.height.toFloat()
+                                        val cellR = min(w / 23.4f, h / 23.6f)
+                                        val originX = w * 0.5f
+                                        val originY = h * 0.455f
+                                        var nearestIdx = -1
+                                        var nearestDistSq = Float.MAX_VALUE
+                                        val maxHitDistSq = (cellR * 1.35f) * (cellR * 1.35f)
+                                        cells.forEachIndexed { idx, cell ->
+                                            val cx = originX + cell.unitX * cellR
+                                            val cy = originY + cell.unitY * cellR
+                                            val d2 = (pos.x - cx) * (pos.x - cx) + (pos.y - cy) * (pos.y - cy)
+                                            if (d2 < nearestDistSq && d2 <= maxHitDistSq) {
+                                                nearestDistSq = d2
+                                                nearestIdx = idx
+                                            }
+                                        }
+                                        if (nearestIdx >= 0) {
+                                            selectedCellIdx = nearestIdx
+                                            draftArgb = cells[nearestIdx].argb
+                                        }
+                                    },
+                                    onDrag = { change, _ ->
+                                        change.consume()
+                                        val pos = change.position
+                                        val w = size.width.toFloat()
+                                        val h = size.height.toFloat()
+                                        val cellR = min(w / 23.4f, h / 23.6f)
+                                        val originX = w * 0.5f
+                                        val originY = h * 0.455f
+                                        var nearestIdx = -1
+                                        var nearestDistSq = Float.MAX_VALUE
+                                        val maxHitDistSq = (cellR * 1.35f) * (cellR * 1.35f)
+                                        cells.forEachIndexed { idx, cell ->
+                                            val cx = originX + cell.unitX * cellR
+                                            val cy = originY + cell.unitY * cellR
+                                            val d2 = (pos.x - cx) * (pos.x - cx) + (pos.y - cy) * (pos.y - cy)
+                                            if (d2 < nearestDistSq && d2 <= maxHitDistSq) {
+                                                nearestDistSq = d2
+                                                nearestIdx = idx
+                                            }
+                                        }
+                                        if (nearestIdx >= 0) {
+                                            selectedCellIdx = nearestIdx
+                                            draftArgb = cells[nearestIdx].argb
+                                        }
+                                    }
+                                )
+                            }
+                    ) {
+                        val w = size.width
+                        val h = size.height
+                        if (w <= 0f || h <= 0f) return@Canvas
+                        val cellR = min(w / 23.4f, h / 23.6f)
+                        val fillR = cellR * 1.035f
+                        val originX = w * 0.5f
+                        val originY = h * 0.455f
+
+                        cells.forEach { cell ->
+                            val cx = originX + cell.unitX * cellR
+                            val cy = originY + cell.unitY * cellR
+                            buildHexPolygon(hexPath, cx, cy, if (cell.isGrayscaleStrip) cellR * 0.96f else fillR)
+                            drawPath(path = hexPath, color = Color(cell.argb))
+                            if (cell.isGrayscaleStrip) {
+                                drawPath(
+                                    path = hexPath,
+                                    color = Color(0x440F172A),
+                                    style = Stroke(width = 1.dp.toPx())
+                                )
+                            }
+                        }
+
+                        // Selected hexagon double black + white ring indicator (matching reference wheel)
+                        val activeCell = cells.getOrNull(selectedCellIdx)
+                        if (activeCell != null) {
+                            val sx = originX + activeCell.unitX * cellR
+                            val sy = originY + activeCell.unitY * cellR
+                            buildHexPolygon(hexPath, sx, sy, cellR * 1.14f)
+                            drawPath(
+                                path = hexPath,
+                                color = Color.Black,
+                                style = Stroke(
+                                    width = 3.6.dp.toPx(),
+                                    cap = StrokeCap.Round,
+                                    join = StrokeJoin.Round
+                                )
+                            )
+                            buildHexPolygon(hexPath, sx, sy, cellR * 1.02f)
+                            drawPath(
+                                path = hexPath,
+                                color = Color.White,
+                                style = Stroke(
+                                    width = 2.0.dp.toPx(),
+                                    cap = StrokeCap.Round,
+                                    join = StrokeJoin.Round
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(draftArgb))
+                            .border(1.2.dp, hairline, CircleShape)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    SingleLineText(
+                        text = HoneycombColorWheel.formatHex(draftArgb),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(
+                        onClick = onDismiss,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.heightIn(min = 34.dp)
+                    ) {
+                        SingleLineText(
+                            text = "Cancel",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Button(
+                        onClick = { onSelectColor(draftArgb) },
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(9.dp),
+                        modifier = Modifier.heightIn(min = 36.dp)
+                    ) {
+                        SingleLineText(
+                            text = "Select",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -1016,6 +1465,23 @@ private fun ColorSwatchSelector(
 @Composable
 private fun FontSizeStepper(
     currentSp: Int,
+    canDecrease: Boolean,
+    canIncrease: Boolean,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit
+) {
+    FontBoostStepper(
+        currentLabel = "${currentSp}sp",
+        canDecrease = canDecrease,
+        canIncrease = canIncrease,
+        onDecrease = onDecrease,
+        onIncrease = onIncrease
+    )
+}
+
+@Composable
+private fun FontBoostStepper(
+    currentLabel: String,
     canDecrease: Boolean,
     canIncrease: Boolean,
     onDecrease: () -> Unit,
@@ -1064,12 +1530,12 @@ private fun FontSizeStepper(
         }
 
         SingleLineText(
-            text = "${currentSp}sp",
+            text = currentLabel,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
-            modifier = Modifier.widthIn(min = 38.dp)
+            modifier = Modifier.widthIn(min = 46.dp)
         )
 
         Box(

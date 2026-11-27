@@ -70,4 +70,31 @@
 
     </ViewFlipper>
 
+    <!-- Seamless continuous-velocity 3D falling rain conveyor on widgets larger than 2x2 (zero alpha pulse) -->
+    <ViewFlipper
+        android:id="@+id/widget_rain_splash_flipper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:autoStart="true"
+        android:flipInterval="1850"
+        android:inAnimation="@anim/widget_rain_splash_in"
+        android:outAnimation="@anim/widget_rain_splash_out"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/widget_rain_splash_frame_1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY" />
+
+        <ImageView
+            android:id="@+id/widget_rain_splash_frame_2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY" />
+
+    </ViewFlipper>
+
 </FrameLayout>

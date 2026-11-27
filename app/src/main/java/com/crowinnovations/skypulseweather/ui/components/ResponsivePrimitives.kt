@@ -45,7 +45,15 @@ fun AutoFitSingleLineText(
         val safeMaxSp = maxFontSize.value.coerceAtLeast(minFontSize.value)
         val safeMinSp = minFontSize.value
 
-        val fittedSp = remember(text, availableWidthPx, safeMaxSp, safeMinSp, fontWeight) {
+        val fittedSp = remember(
+            text,
+            availableWidthPx,
+            safeMaxSp,
+            safeMinSp,
+            fontWeight,
+            style.fontFamily,
+            style.fontStyle
+        ) {
             var candidate = safeMaxSp
             while (candidate > safeMinSp) {
                 val measured = measurer.measure(

@@ -131,6 +131,9 @@ abstract class BaseSkyPulseWidgetReceiver : AppWidgetProvider() {
     }
 }
 
+/** 5×3 Expanded Full Weather & Swipeable 10-Day Forecast Widget */
+class WeatherWidget5x3Receiver : BaseSkyPulseWidgetReceiver()
+
 /** 5×2 Wide Full Weather & Swipeable 10-Day Forecast Widget */
 class WeatherWidget5x2Receiver : BaseSkyPulseWidgetReceiver()
 
