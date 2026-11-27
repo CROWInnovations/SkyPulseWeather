@@ -10,8 +10,8 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android%208.0%2B-38BDF8?logo=android&logoColor=white" alt="Android 8.0+" />
-  <img src="https://img.shields.io/badge/Version-1.3.0-3B82F6" alt="Version 1.3.0" />
-  <a href="https://github.com/CROWInnovations/SkyPulseWeather/releases/latest/download/SkyPulseWeather-v1.3.0.apk"><img src="https://img.shields.io/badge/Download-Android%20APK%20(v1.3.0)-10B981?logo=android&logoColor=white" alt="Download Android APK v1.3.0" /></a>
+  <img src="https://img.shields.io/badge/Version-1.3.1-3B82F6" alt="Version 1.3.1" />
+  <a href="https://github.com/CROWInnovations/SkyPulseWeather/releases/latest/download/SkyPulseWeather-v1.3.1.apk"><img src="https://img.shields.io/badge/Download-Android%20APK%20(v1.3.1)-10B981?logo=android&logoColor=white" alt="Download Android APK v1.3.1" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-22C55E" alt="Apache 2.0 License" /></a>
   <a href="https://crowinnovations.com/apps/"><img src="https://img.shields.io/badge/Built%20By-CROW%20Innovations-F59E0B" alt="CROW Innovations" /></a>
 </p>
@@ -22,7 +22,7 @@
 
 ### Direct Android Installation (APK)
 
-- **Latest Signed Release APK (`v1.3.0`)**: [**Download `SkyPulseWeather-v1.3.0.apk`**](https://github.com/CROWInnovations/SkyPulseWeather/releases/latest/download/SkyPulseWeather-v1.3.0.apk) *(or view [GitHub Releases](https://github.com/CROWInnovations/SkyPulseWeather/releases/latest))*
+- **Latest Signed Release APK (`v1.3.1`)**: [**Download `SkyPulseWeather-v1.3.1.apk`**](https://github.com/CROWInnovations/SkyPulseWeather/releases/latest/download/SkyPulseWeather-v1.3.1.apk) *(or view [GitHub Releases](https://github.com/CROWInnovations/SkyPulseWeather/releases/latest))*
 - Signed with the production release key (`com.crowinnovations.skypulseweather`, `Android 8.0+ / API 26–36`), allowing clean manual installation and seamless in-place updates alongside future releases.
 
 ---

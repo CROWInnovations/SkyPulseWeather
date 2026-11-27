@@ -43,7 +43,7 @@
 - **Security Practices**:
   - Data is encrypted in transit (`TLS 1.2/1.3 HTTPS` enforced via `network_security_config.xml` and `usesCleartextTraffic="false"`): **Yes**.
 
-## 4. Technical Release Checklist (v1.3.0 — `versionCode 4`)
+## 4. Technical Release Checklist (v1.3.1 — `versionCode 5`)
 - **Signed Release App Bundle (`.aab`)**: `app/build/outputs/bundle/release/app-release.aab`
 - **Signed Release APK (`.apk`)**: `app/build/outputs/apk/release/app-release.apk`
 - **R8 Deobfuscation Mapping File**: `app/build/outputs/mapping/release/mapping.txt`

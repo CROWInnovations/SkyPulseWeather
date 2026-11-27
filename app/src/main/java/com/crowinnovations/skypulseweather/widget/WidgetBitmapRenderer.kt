@@ -68,6 +68,26 @@ object WidgetBitmapRenderer {
     }
 
     /**
+     * Tight single-line bold text width measurement in widget virtual `dp` for 10-day forecast
+     * columns and telemetry rows so larger fonts fill available width without clipping or wrapping.
+     */
+    internal fun measureTightBoldTextWidthDp(
+        context: Context,
+        text: String,
+        virtualFontSizeSp: Float,
+        fontScale: Float
+    ): Float {
+        if (text.isEmpty()) return 0f
+        val density = context.resources.displayMetrics.density.safeClamp(1.5f, 4.0f)
+        val safeFontScale = fontScale.safeClamp(0.85f, 1.45f)
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = virtualFontSizeSp * safeFontScale * density
+        }
+        return (paint.measureText(text) * 1.035f / density) + 2f
+    }
+
+    /**
      * Renders the hero temperature string (`"40°"`, `"-12°"`, `"102°"`) cropped tightly to its
      * true glyph ink bounds (eliminating `TextView`'s ~42% empty diacritic-ascent and descender
      * box bloat) while compensating for launcher host downscaling

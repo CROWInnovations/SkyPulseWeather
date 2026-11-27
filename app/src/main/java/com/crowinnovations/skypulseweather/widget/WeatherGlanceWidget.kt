@@ -257,24 +257,28 @@ object WeatherWidgetPublisher {
             prefs.dateDisplayPosition == DateDisplayPosition.RIGHT_OF_TIME
         val hasBelowDate = prefs.dateDisplayPosition == DateDisplayPosition.BELOW_TIME
         val is24h = android.text.format.DateFormat.is24HourFormat(context)
-        val stripHeightFloat = if (isTall) 62f else 50f
+        val stripHeightFloat = if (isTall) {
+            (68f / hostResizeRatio).safeClamp(68f, 78f)
+        } else {
+            (56f / hostResizeRatio).safeClamp(56f, 64f)
+        }
 
         val maxHeightClockSp = when {
             wDp < 106f || hDp < 106f -> if (hasBelowDate) 11f else 15f
             hDp < 145f -> if (hasBelowDate) 14f else 22f
             !isLargeForecastMode -> {
-                val budget = (hDp - 84f).coerceAtLeast(18f)
+                val budget = (hDp - 88f).coerceAtLeast(18f)
                 val rawMax = if (hasBelowDate) {
                     (budget - 5f) / (2.04f * safeFontScale)
                 } else {
                     (budget - 3f) / (1.22f * safeFontScale)
                 }
-                rawMax.safeClamp(12f, 44f / hostResizeRatio)
+                rawMax.safeClamp(12f, (44f / hostResizeRatio).coerceAtLeast(12f))
             }
             else -> {
-                val tenDayOverhead = stripHeightFloat + (if (isTall && model.days.size > 5) 20f else 5f)
-                val alertOverhead = if (isTall && model.alertSummary != null) 22f else 0f
-                val minTelemetryAndHeroH = if (isCompactHeight) 88f else 118f
+                val tenDayOverhead = stripHeightFloat + (if (isTall && model.days.size > 5) 24f else 5f)
+                val alertOverhead = if (isTall && model.alertSummary != null) 24f else 0f
+                val minTelemetryAndHeroH = if (isCompactHeight) 96f else 128f
                 val budget = (hDp - topPadFloat * 2f - tenDayOverhead - alertOverhead - minTelemetryAndHeroH)
                     .coerceAtLeast(22f)
                 val rawMax = if (hasBelowDate) {
@@ -329,14 +333,14 @@ object WeatherWidgetPublisher {
 
         // Use the full open right-hand celestial space down to right above the 10-day header (+ Moon Phase label)
         val maxMoonBottomFraction = if (isLargeForecastMode) {
-            val tenDayH = stripHeightFloat + (if (isTall && model.days.size > 5) 20f else 5f)
-            val alertH = if (isTall && model.alertSummary != null) 22f else 0f
-            val moonPhaseLabelH = if (!model.isDay) 15f else 0f
+            val tenDayH = stripHeightFloat + (if (isTall && model.days.size > 5) 24f else 5f)
+            val alertH = if (isTall && model.alertSummary != null) 24f else 0f
+            val moonPhaseLabelH = if (!model.isDay) 16f else 0f
             val maxBottomDp = (hDp - topPadFloat - tenDayH - alertH - moonPhaseLabelH - 4f)
                 .coerceAtLeast(hDp * (topReservedFraction + 0.18f))
             (maxBottomDp / hDp.coerceAtLeast(80f)).safeClamp(topReservedFraction + 0.18f, 0.74f)
         } else {
-            ((hDp - 40f) / hDp.coerceAtLeast(60f)).safeClamp(topReservedFraction + 0.18f, 0.72f)
+            ((hDp - 44f) / hDp.coerceAtLeast(60f)).safeClamp(topReservedFraction + 0.18f, 0.72f)
         }
 
         val isLargerThan2x2 = (wDp > 212f && hDp >= 108f) || (wDp >= 108f && hDp > 212f)
@@ -459,6 +463,7 @@ object WeatherWidgetPublisher {
                 days = model.days,
                 stripWidthDp = stripWidthDp,
                 stripHeightDp = stripHeightFloat,
+                hostResizeRatio = hostResizeRatio,
                 fontScale = safeFontScale,
                 isTall = isTall,
                 scrollOffset = scrollOffset,
@@ -588,6 +593,32 @@ private fun createSwipeStripShellRemoteViews(
     }
 }
 
+private fun autoFitWidgetLineSp(
+    context: Context,
+    text: String,
+    availWidthDp: Float,
+    desiredPhysicalSp: Float,
+    minVirtualSp: Float,
+    maxVirtualSp: Float,
+    hostResizeRatio: Float,
+    fontScale: Float
+): Float {
+    val safeMax = maxVirtualSp.coerceAtLeast(minVirtualSp)
+    val safeRatio = hostResizeRatio.safeClamp(0.65f, 1.25f)
+    val targetVirtual = (desiredPhysicalSp / safeRatio).safeClamp(minVirtualSp, safeMax)
+    if (text.isEmpty()) return targetVirtual
+    val safeAvailW = availWidthDp.coerceAtLeast(24f)
+    val measuredW = WidgetBitmapRenderer.measureTightBoldTextWidthDp(
+        context = context,
+        text = text,
+        virtualFontSizeSp = targetVirtual,
+        fontScale = fontScale
+    )
+    if (measuredW <= safeAvailW) return targetVirtual
+    val scaled = targetVirtual * (safeAvailW / measuredW.coerceAtLeast(1f))
+    return scaled.safeClamp(minVirtualSp, safeMax)
+}
+
 @RequiresApi(Build.VERSION_CODES.S)
 private fun attachSwipeableTenDayAdapterToRoot(
     context: Context,
@@ -595,6 +626,7 @@ private fun attachSwipeableTenDayAdapterToRoot(
     days: List<WidgetDayUi>,
     stripWidthDp: Float,
     stripHeightDp: Float,
+    hostResizeRatio: Float,
     fontScale: Float,
     isTall: Boolean,
     scrollOffset: Int,
@@ -603,10 +635,55 @@ private fun attachSwipeableTenDayAdapterToRoot(
     val invScale = 1f / SWIPE_LIST_SCALE
     val visibleSlotCount = minOf(5, days.size).coerceAtLeast(1)
     val colWidthDp = (stripWidthDp / visibleSlotCount).coerceAtLeast(42f)
-    val dateSp = (colWidthDp / (6.45f * fontScale)).safeClamp(7.4f, 9.6f) * invScale
-    val rainPctSp = (colWidthDp / (7.0f * fontScale)).safeClamp(7.6f, 9.4f) * invScale
-    val hiLoSp = (colWidthDp / (5.95f * fontScale)).safeClamp(7.8f, 10.4f) * invScale
-    val iconSizeDp = (if (isTall) 18f else 15f) * invScale
+    val rawIconDp = if (isTall) 20f else 17f
+    val widestDate = days.maxByOrNull { it.dateDayLabel.length }?.dateDayLabel ?: "12/28 Wed"
+    val widestHiLo = days.maxByOrNull { it.highLowLabel.length }?.highLowLabel ?: "99° / 99°"
+
+    var baseDateSp = autoFitWidgetLineSp(
+        context = context,
+        text = widestDate,
+        availWidthDp = colWidthDp - 5f,
+        desiredPhysicalSp = if (isTall) 11.4f else 10.6f,
+        minVirtualSp = 9.4f,
+        maxVirtualSp = if (isTall) 14.0f else 12.8f,
+        hostResizeRatio = hostResizeRatio,
+        fontScale = fontScale
+    )
+    var baseHiLoSp = autoFitWidgetLineSp(
+        context = context,
+        text = widestHiLo,
+        availWidthDp = colWidthDp - 5f,
+        desiredPhysicalSp = if (isTall) 12.0f else 11.2f,
+        minVirtualSp = 9.8f,
+        maxVirtualSp = if (isTall) 14.6f else 13.4f,
+        hostResizeRatio = hostResizeRatio,
+        fontScale = fontScale
+    )
+    val baseRainPctSp = autoFitWidgetLineSp(
+        context = context,
+        text = "100%",
+        availWidthDp = (colWidthDp - rawIconDp - 3f).coerceAtLeast(22f),
+        desiredPhysicalSp = if (isTall) 11.2f else 10.2f,
+        minVirtualSp = 9.0f,
+        maxVirtualSp = if (isTall) 13.8f else 12.4f,
+        hostResizeRatio = hostResizeRatio,
+        fontScale = fontScale
+    )
+
+    // Guarantee vertical height safety across all OS fontScale settings (0.85x..1.45x)
+    val availTextVerticalDp = (stripHeightDp - rawIconDp - 4f).coerceAtLeast(22f)
+    val maxCombinedSp = (availTextVerticalDp / (fontScale * 1.20f)).coerceAtLeast(18f)
+    val combinedSp = baseDateSp + baseHiLoSp
+    if (combinedSp > maxCombinedSp) {
+        val vScale = (maxCombinedSp / combinedSp).safeClamp(0.65f, 1f)
+        baseDateSp = (baseDateSp * vScale).coerceAtLeast(8.8f)
+        baseHiLoSp = (baseHiLoSp * vScale).coerceAtLeast(9.2f)
+    }
+
+    val dateSp = baseDateSp * invScale
+    val rainPctSp = minOf(baseRainPctSp, baseHiLoSp) * invScale
+    val hiLoSp = baseHiLoSp * invScale
+    val iconSizeDp = rawIconDp * invScale
     val scaledColW = colWidthDp * invScale
     val scaledStripH = stripHeightDp * invScale
 
@@ -907,12 +984,22 @@ private fun WidgetCardSurface(
                     )
                     Spacer(modifier = GlanceModifier.defaultWeight())
                     if (heightDp >= 64f) {
+                        val miniHlSp = autoFitWidgetLineSp(
+                            context = context,
+                            text = model.highLowCompact,
+                            availWidthDp = (widthDp - 10f).coerceAtLeast(32f),
+                            desiredPhysicalSp = 10.8f,
+                            minVirtualSp = 9.8f,
+                            maxVirtualSp = 13.4f,
+                            hostResizeRatio = hostResizeRatio,
+                            fontScale = fontScale
+                        ).sp
                         Text(
                             text = model.highLowCompact,
                             maxLines = 1,
                             style = TextStyle(
                                 color = humidityColor,
-                                fontSize = 8.8.sp,
+                                fontSize = miniHlSp,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center
                             )
@@ -938,9 +1025,39 @@ private fun WidgetCardSurface(
                     fontStyle = prefs.widgetTempFontStyle,
                     textColorArgb = prefs.widgetTempTextColorArgb
                 )
-                val stripAvailCityW = (widthDp - stripTempBmp.widthDp - 28f).coerceAtLeast(56f)
-                val stripCitySp = (stripAvailCityW / ((model.locationName.length * 0.60f + 1.5f) * fontScale))
-                    .safeClamp(9.8f, 13.0f).sp
+                val stripAvailCityW = (widthDp - stripTempBmp.widthDp - 26f).coerceAtLeast(56f)
+                val stripCitySp = autoFitWidgetLineSp(
+                    context = context,
+                    text = model.locationName,
+                    availWidthDp = stripAvailCityW,
+                    desiredPhysicalSp = 12.2f,
+                    minVirtualSp = 10.4f,
+                    maxVirtualSp = 15.2f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                ).sp
+                val fullStripSub = "${model.highLowLabeled} · ${model.conditionOnly}"
+                val fullStripSubW = WidgetBitmapRenderer.measureTightBoldTextWidthDp(
+                    context = context,
+                    text = fullStripSub,
+                    virtualFontSizeSp = (11.2f / hostResizeRatio).safeClamp(11.0f, 14.0f),
+                    fontScale = fontScale
+                )
+                val chosenStripSub = if (fullStripSubW <= stripAvailCityW) {
+                    fullStripSub
+                } else {
+                    model.highLowLabeled
+                }
+                val stripSubSp = autoFitWidgetLineSp(
+                    context = context,
+                    text = chosenStripSub,
+                    availWidthDp = stripAvailCityW,
+                    desiredPhysicalSp = 11.4f,
+                    minVirtualSp = 10.4f,
+                    maxVirtualSp = 14.4f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                ).sp
                 Column(
                     modifier = GlanceModifier
                         .fillMaxSize()
@@ -973,12 +1090,12 @@ private fun WidgetCardSurface(
                                 )
                             )
                             Text(
-                                text = "${model.highLowLabeled} · ${model.conditionOnly}",
+                                text = chosenStripSub,
                                 maxLines = 1,
                                 style = TextStyle(
                                     color = humidityColor,
-                                    fontSize = 9.8.sp,
-                                    fontWeight = FontWeight.Medium
+                                    fontSize = stripSubSp,
+                                    fontWeight = FontWeight.Bold
                                 )
                             )
                         }
@@ -995,10 +1112,52 @@ private fun WidgetCardSurface(
                 }
             }
 
-            // 3. 2×2 Square Card Layout: Optional Top Centered Time -> Top-Left City & Centered Temp -> Bottom Humidity + H/L/Sky/Feels
+            // 3. 2×2 Square Card Layout: Optional Top Centered Time -> Top-Left City & Centered Temp -> Bottom H/L/Feels + Sky/Humidity + Wind/UV
             isSquare2x2 -> {
                 val sqClockUsedH = if (topClockRemoteViews != null) topClockHeightDp.value + 2f else 0f
-                val sqTelemetryH = if (heightDp >= 158f && model.windAndUvLine.isNotEmpty()) 44f else 31f
+                val sqFullRowW = (widthDp - 20f).coerceAtLeast(88f)
+                val sqShowWind = heightDp >= 152f && model.windAndUvLine.isNotEmpty()
+                val sqHlLineText = if (model.locationId == -1L || model.days.isEmpty()) {
+                    model.highLowSkyFeelsCompact
+                } else {
+                    "${model.highLowLabeled} · ${model.feelsOnly}"
+                }
+                val sqCondHumText = if (model.locationId == -1L || model.days.isEmpty()) {
+                    model.humidityLine
+                } else {
+                    "${model.conditionOnly} · ${model.humidityLine}"
+                }
+                val sqHlSp = autoFitWidgetLineSp(
+                    context = context,
+                    text = sqHlLineText,
+                    availWidthDp = sqFullRowW,
+                    desiredPhysicalSp = 11.8f,
+                    minVirtualSp = 10.6f,
+                    maxVirtualSp = 14.8f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                )
+                val sqCondHumSp = autoFitWidgetLineSp(
+                    context = context,
+                    text = sqCondHumText,
+                    availWidthDp = sqFullRowW,
+                    desiredPhysicalSp = 11.4f,
+                    minVirtualSp = 10.2f,
+                    maxVirtualSp = 14.2f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                )
+                val sqWindSp = autoFitWidgetLineSp(
+                    context = context,
+                    text = model.windAndUvLine,
+                    availWidthDp = sqFullRowW,
+                    desiredPhysicalSp = 11.4f,
+                    minVirtualSp = 10.2f,
+                    maxVirtualSp = 14.2f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                )
+                val sqTelemetryH = ((sqHlSp + sqCondHumSp + (if (sqShowWind) sqWindSp else 0f)) * fontScale * 1.24f) + 4f
                 val sqAvailH = (heightDp - 12f - sqClockUsedH - 18f - sqTelemetryH - 4f).coerceAtLeast(22f)
                 val sqAvailCityRowW = (widthDp - 42f).coerceAtLeast(72f)
                 val sqMaxCitySp = (13.0f / hostResizeRatio).safeClamp(11.5f, 16.0f)
@@ -1101,31 +1260,31 @@ private fun WidgetCardSurface(
 
                     Column(modifier = GlanceModifier.fillMaxWidth()) {
                         Text(
-                            text = model.humidityLine,
+                            text = sqHlLineText,
                             maxLines = 1,
                             style = TextStyle(
-                                color = humidityColor,
-                                fontSize = 11.sp,
+                                color = primaryColor,
+                                fontSize = sqHlSp.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         )
                         Text(
-                            text = model.highLowSkyFeelsCompact,
+                            text = sqCondHumText,
                             maxLines = 1,
                             style = TextStyle(
-                                color = secondaryColor,
-                                fontSize = 9.5.sp,
+                                color = humidityColor,
+                                fontSize = sqCondHumSp.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         )
-                        if (heightDp >= 158f && model.windAndUvLine.isNotEmpty()) {
+                        if (sqShowWind) {
                             Text(
                                 text = model.windAndUvLine,
                                 maxLines = 1,
                                 style = TextStyle(
                                     color = windUvColor,
-                                    fontSize = 9.5.sp,
-                                    fontWeight = FontWeight.Medium
+                                    fontSize = sqWindSp.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
                             )
                         }
@@ -1172,19 +1331,70 @@ private fun WidgetCardSurface(
                     .safeClamp(11.0f, maxCitySpCap)
                 val locNameSp = locNameSpFloat.sp
 
-                val stripHeightFloat = if (isTall) 62f else 50f
+                val stripHeightFloat = if (isTall) {
+                    (68f / hostResizeRatio).safeClamp(68f, 78f)
+                } else {
+                    (56f / hostResizeRatio).safeClamp(56f, 64f)
+                }
                 val stripSectionOverhead = if (showTenDayStrip) {
-                    stripHeightFloat + (if (isTall && model.days.size > 5) 18f else 4f)
+                    stripHeightFloat + (if (isTall && model.days.size > 5) 23f else 4f)
                 } else {
                     0f
                 }
                 val alertOverhead = if (isTall && model.alertSummary != null) 24f else 0f
-                val showWindLine = model.windAndUvLine.isNotEmpty() && (isTall || effectiveH >= 165f)
-                val lowerTelemetryOverhead = if (isCompactHeight) {
-                    if (showWindLine) 46f else 32f
+                val showWindLine = model.windAndUvLine.isNotEmpty() && (isTall || effectiveH >= 152f)
+                val stripWidthFloat = (widthDp - 20f).coerceAtLeast(150f)
+                val hasMoonPhaseCol = hasNightMoonStage
+                val telemetryWidthFloat = if (hasMoonPhaseCol) {
+                    availLeftWidthDp
                 } else {
-                    if (showWindLine) 60f else 42f
+                    stripWidthFloat
                 }
+
+                // Balanced 3-line telemetry so H:/L: and Wind render large & bold without wrapping
+                val hlPrimaryLineText = if (model.locationId == -1L || model.days.isEmpty()) {
+                    model.highLowSkyFeelsCompact
+                } else {
+                    "${model.highLowLabeled} · ${model.feelsOnly}"
+                }
+                val condHumidityLineText = if (model.locationId == -1L || model.days.isEmpty()) {
+                    model.humidityLine
+                } else {
+                    "${model.conditionOnly} · ${model.humidityLine}"
+                }
+                val hlPrimarySpFloat = autoFitWidgetLineSp(
+                    context = context,
+                    text = hlPrimaryLineText,
+                    availWidthDp = telemetryWidthFloat,
+                    desiredPhysicalSp = if (isTall) 13.4f else 12.2f,
+                    minVirtualSp = 10.8f,
+                    maxVirtualSp = if (isTall) 16.8f else 15.2f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                )
+                val condHumiditySpFloat = autoFitWidgetLineSp(
+                    context = context,
+                    text = condHumidityLineText,
+                    availWidthDp = telemetryWidthFloat,
+                    desiredPhysicalSp = if (isTall) 12.8f else 11.6f,
+                    minVirtualSp = 10.4f,
+                    maxVirtualSp = if (isTall) 15.8f else 14.4f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                )
+                val windUvSpFloat = autoFitWidgetLineSp(
+                    context = context,
+                    text = model.windAndUvLine,
+                    availWidthDp = telemetryWidthFloat,
+                    desiredPhysicalSp = if (isTall) 12.8f else 11.8f,
+                    minVirtualSp = 10.6f,
+                    maxVirtualSp = if (isTall) 15.8f else 14.6f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                )
+
+                val lowerTelemetryOverhead = ((hlPrimarySpFloat + condHumiditySpFloat +
+                    (if (showWindLine) windUvSpFloat else 0f)) * fontScale * 1.25f) + 4f
                 val cityHeaderOverhead = if (isCompactHeight) 20f else 27f
 
                 val stageAvailableHeightDp = (heightDp - topPadFloat - 2f - clockOverhead -
@@ -1226,8 +1436,8 @@ private fun WidgetCardSurface(
                 }
 
                 // Moon Phase centered directly under the large 3D Moon in the right-hand open space
-                val moonPhaseSpFloat = (rightSpaceFloat / (10.2f * fontScale))
-                    .safeClamp(if (isCompactHeight) 8.6f else 9.8f, if (isTall) 11.6f else 10.6f)
+                val moonPhaseSpFloat = (rightSpaceFloat / (9.6f * fontScale))
+                    .safeClamp(if (isCompactHeight) 9.8f else 11.0f, if (isTall) 13.4f else 12.2f)
                 val moonPhaseHeightFloat = moonPhaseSpFloat * fontScale * 1.32f + 2f
                 val rawMoonBottomDp = WidgetBitmapRenderer.computeMoonBottomDp(
                     widthDp = widthDp,
@@ -1254,20 +1464,6 @@ private fun WidgetCardSurface(
                     null
                 }
 
-                val stripWidthFloat = (widthDp - 20f).coerceAtLeast(150f)
-                val telemetryWidthFloat = if (moonPhaseRemoteViews != null) {
-                    availLeftWidthDp
-                } else {
-                    stripWidthFloat
-                }
-                val chosenHlSkyFeelsText = when {
-                    telemetryWidthFloat >= 315f && model.highLowSkyFeelsWide.length <= 44 -> model.highLowSkyFeelsWide
-                    telemetryWidthFloat < 210f -> "${model.highLowLabeled} · ${model.conditionOnly} · ${model.feelsOnly}"
-                    else -> model.highLowSkyFeelsCompact
-                }
-                val hlSkyFeelsSp = (telemetryWidthFloat / ((chosenHlSkyFeelsText.length * 0.50f + 1.4f) * fontScale))
-                    .safeClamp(8.5f, if (isTall) 11.4f else 10.6f).sp
-
                 val visibleCount = minOf(5, model.days.size)
                 val maxOffset = (model.days.size - visibleCount).coerceAtLeast(0)
                 val safeOffset = dayOffset.safeClamp(0, maxOffset)
@@ -1281,9 +1477,39 @@ private fun WidgetCardSurface(
                 val navControlWidth = if (!useNativeSwipeStrip && maxOffset > 0) 24f else 0f
                 val colWidthDp = ((stripWidthFloat - navControlWidth) / visibleCount.coerceAtLeast(1))
                     .coerceAtLeast(34f)
-                val fallbackDateSp = (colWidthDp / (6.45f * fontScale)).safeClamp(7.4f, 9.6f).sp
-                val dayHiLoSp = (colWidthDp / (5.8f * fontScale)).safeClamp(8.0f, 10.6f).sp
-                val dayRainPctSp = (colWidthDp / (7.0f * fontScale)).safeClamp(7.5f, 9.4f).sp
+                val widestDateLabel = visibleDays.maxByOrNull { it.dateDayLabel.length }?.dateDayLabel ?: "12/28 Wed"
+                val widestHiLoLabel = visibleDays.maxByOrNull { it.highLowLabel.length }?.highLowLabel ?: "99° / 99°"
+                val fallbackDateSp = autoFitWidgetLineSp(
+                    context = context,
+                    text = widestDateLabel,
+                    availWidthDp = colWidthDp - 5f,
+                    desiredPhysicalSp = if (isTall) 11.4f else 10.6f,
+                    minVirtualSp = 9.4f,
+                    maxVirtualSp = if (isTall) 14.0f else 12.8f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                ).sp
+                val dayHiLoSp = autoFitWidgetLineSp(
+                    context = context,
+                    text = widestHiLoLabel,
+                    availWidthDp = colWidthDp - 5f,
+                    desiredPhysicalSp = if (isTall) 12.0f else 11.2f,
+                    minVirtualSp = 9.8f,
+                    maxVirtualSp = if (isTall) 14.6f else 13.4f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                ).sp
+                val dayRainPctSp = autoFitWidgetLineSp(
+                    context = context,
+                    text = "100%",
+                    availWidthDp = (colWidthDp - (if (isTall) 20f else 17f) - 3f).coerceAtLeast(22f),
+                    desiredPhysicalSp = if (isTall) 11.2f else 10.2f,
+                    minVirtualSp = 9.0f,
+                    maxVirtualSp = if (isTall) 13.8f else 12.4f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                ).sp
+                val tenDayHeaderSp = (11.2f / hostResizeRatio).safeClamp(11.0f, 13.6f).sp
 
                 Column(
                     modifier = GlanceModifier
@@ -1381,32 +1607,32 @@ private fun WidgetCardSurface(
                                 Spacer(modifier = GlanceModifier.defaultWeight())
 
                                 Text(
-                                    text = model.humidityLine,
-                                    maxLines = 1,
-                                    style = TextStyle(
-                                        color = humidityColor,
-                                        fontSize = if (isTall) 13.sp else 11.2.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
-                                Text(
-                                    text = chosenHlSkyFeelsText,
+                                    text = hlPrimaryLineText,
                                     maxLines = 1,
                                     modifier = GlanceModifier.fillMaxWidth(),
                                     style = TextStyle(
                                         color = primaryColor,
-                                        fontSize = hlSkyFeelsSp,
+                                        fontSize = hlPrimarySpFloat.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                 )
-                                if (model.windAndUvLine.isNotEmpty() && (isTall || effectiveH >= 165f)) {
+                                Text(
+                                    text = condHumidityLineText,
+                                    maxLines = 1,
+                                    style = TextStyle(
+                                        color = humidityColor,
+                                        fontSize = condHumiditySpFloat.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                                if (showWindLine) {
                                     Text(
                                         text = model.windAndUvLine,
                                         maxLines = 1,
                                         style = TextStyle(
                                             color = windUvColor,
-                                            fontSize = if (isTall) 10.8.sp else 9.8.sp,
-                                            fontWeight = FontWeight.Medium
+                                            fontSize = windUvSpFloat.sp,
+                                            fontWeight = FontWeight.Bold
                                         )
                                     )
                                 }
@@ -1493,32 +1719,32 @@ private fun WidgetCardSurface(
                             horizontalAlignment = Alignment.Start
                         ) {
                             Text(
-                                text = model.humidityLine,
-                                maxLines = 1,
-                                style = TextStyle(
-                                    color = humidityColor,
-                                    fontSize = if (isTall) 13.sp else 11.2.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                            Text(
-                                text = chosenHlSkyFeelsText,
+                                text = hlPrimaryLineText,
                                 maxLines = 1,
                                 modifier = GlanceModifier.fillMaxWidth(),
                                 style = TextStyle(
                                     color = primaryColor,
-                                    fontSize = hlSkyFeelsSp,
+                                    fontSize = hlPrimarySpFloat.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             )
-                            if (model.windAndUvLine.isNotEmpty() && (isTall || effectiveH >= 165f)) {
+                            Text(
+                                text = condHumidityLineText,
+                                maxLines = 1,
+                                style = TextStyle(
+                                    color = humidityColor,
+                                    fontSize = condHumiditySpFloat.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                            if (showWindLine) {
                                 Text(
                                     text = model.windAndUvLine,
                                     maxLines = 1,
                                     style = TextStyle(
                                         color = windUvColor,
-                                        fontSize = if (isTall) 10.8.sp else 9.8.sp,
-                                        fontWeight = FontWeight.Medium
+                                        fontSize = windUvSpFloat.sp,
+                                        fontWeight = FontWeight.Bold
                                     )
                                 )
                             }
@@ -1574,7 +1800,7 @@ private fun WidgetCardSurface(
                                         modifier = GlanceModifier.defaultWeight(),
                                         style = TextStyle(
                                             color = secondaryColor,
-                                            fontSize = 9.5.sp,
+                                            fontSize = tenDayHeaderSp,
                                             fontWeight = FontWeight.Bold
                                         )
                                     )
@@ -1588,7 +1814,7 @@ private fun WidgetCardSurface(
                                             .padding(horizontal = 7.dp, vertical = 2.dp),
                                         style = TextStyle(
                                             color = rainTint,
-                                            fontSize = 9.5.sp,
+                                            fontSize = tenDayHeaderSp,
                                             fontWeight = FontWeight.Bold
                                         )
                                     )
@@ -1670,7 +1896,7 @@ private fun WidgetCardSurface(
                                                 Image(
                                                     provider = ImageProvider(day.glyph),
                                                     contentDescription = day.dateDayLabel,
-                                                    modifier = GlanceModifier.size(if (isTall) 18.dp else 15.dp)
+                                                    modifier = GlanceModifier.size(if (isTall) 20.dp else 17.dp)
                                                 )
                                                 if (day.showRainPercentBesideCloud) {
                                                     Spacer(modifier = GlanceModifier.width(2.dp))
