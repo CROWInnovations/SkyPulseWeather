@@ -1362,12 +1362,13 @@ private fun WidgetCardSurface(
                 } else {
                     "${model.conditionOnly} · ${model.humidityLine}"
                 }
+                val safeTelemetryAvailW = (telemetryWidthFloat - 10f).coerceAtLeast(72f)
                 val hlPrimarySpFloat = autoFitWidgetLineSp(
                     context = context,
                     text = hlPrimaryLineText,
-                    availWidthDp = telemetryWidthFloat,
+                    availWidthDp = safeTelemetryAvailW,
                     desiredPhysicalSp = if (isTall) 13.4f else 12.2f,
-                    minVirtualSp = 10.8f,
+                    minVirtualSp = 10.4f,
                     maxVirtualSp = if (isTall) 16.8f else 15.2f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
@@ -1375,9 +1376,9 @@ private fun WidgetCardSurface(
                 val condHumiditySpFloat = autoFitWidgetLineSp(
                     context = context,
                     text = condHumidityLineText,
-                    availWidthDp = telemetryWidthFloat,
+                    availWidthDp = safeTelemetryAvailW,
                     desiredPhysicalSp = if (isTall) 12.8f else 11.6f,
-                    minVirtualSp = 10.4f,
+                    minVirtualSp = 9.8f,
                     maxVirtualSp = if (isTall) 15.8f else 14.4f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
@@ -1385,9 +1386,9 @@ private fun WidgetCardSurface(
                 val windUvSpFloat = autoFitWidgetLineSp(
                     context = context,
                     text = model.windAndUvLine,
-                    availWidthDp = telemetryWidthFloat,
+                    availWidthDp = safeTelemetryAvailW,
                     desiredPhysicalSp = if (isTall) 12.8f else 11.8f,
-                    minVirtualSp = 10.6f,
+                    minVirtualSp = 10.0f,
                     maxVirtualSp = if (isTall) 15.8f else 14.6f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
@@ -1619,6 +1620,7 @@ private fun WidgetCardSurface(
                                 Text(
                                     text = condHumidityLineText,
                                     maxLines = 1,
+                                    modifier = GlanceModifier.fillMaxWidth(),
                                     style = TextStyle(
                                         color = humidityColor,
                                         fontSize = condHumiditySpFloat.sp,
@@ -1629,6 +1631,7 @@ private fun WidgetCardSurface(
                                     Text(
                                         text = model.windAndUvLine,
                                         maxLines = 1,
+                                        modifier = GlanceModifier.fillMaxWidth(),
                                         style = TextStyle(
                                             color = windUvColor,
                                             fontSize = windUvSpFloat.sp,
