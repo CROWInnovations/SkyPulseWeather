@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository
+import com.crowinnovations.skypulseweather.domain.BackingTone
 import com.crowinnovations.skypulseweather.domain.DailyForecastItem
 import com.crowinnovations.skypulseweather.domain.DisplayFontStyle
 import com.crowinnovations.skypulseweather.domain.DisplayTextColor
@@ -88,14 +89,48 @@ fun GlassCard(
     }
 }
 
-private fun resolveForecastCardSurfaceColor(
+internal fun resolveForecastCardSurfaceColor(
     palette: SkyPalette,
-    transparencyDeltaPct: Int
+    transparencyDeltaPct: Int,
+    backingTone: BackingTone = BackingTone.DEFAULT
 ): Color {
-    if (transparencyDeltaPct == 0) return palette.cardSurface
-    // Negative delta decreases transparency (increases card alpha/opacity); positive delta increases transparency
-    val adjustedAlpha = (palette.cardSurface.alpha - (transparencyDeltaPct / 100f)).safeClamp(0.08f, 1.0f)
-    return palette.cardSurface.copy(alpha = adjustedAlpha)
+    val baseSurface = when (backingTone) {
+        BackingTone.DEFAULT -> palette.cardSurface
+        BackingTone.DARKEN -> Color(0xFF040914).copy(
+            alpha = (palette.cardSurface.alpha + 0.14f).safeClamp(0.24f, 0.96f)
+        )
+        BackingTone.LIGHTEN -> Color(0xFFEFF6FF).copy(
+            alpha = (palette.cardSurface.alpha * 0.72f).safeClamp(0.20f, 0.88f)
+        )
+    }
+    if (transparencyDeltaPct == 0 && backingTone == BackingTone.DEFAULT) return baseSurface
+    val adjustedAlpha = (baseSurface.alpha - (transparencyDeltaPct / 100f)).safeClamp(0.06f, 0.98f)
+    return baseSurface.copy(alpha = adjustedAlpha)
+}
+
+internal fun resolveEffectiveForecastPalette(
+    palette: SkyPalette,
+    transparencyDeltaPct: Int,
+    backingTone: BackingTone
+): SkyPalette {
+    val surface = resolveForecastCardSurfaceColor(palette, transparencyDeltaPct, backingTone)
+    return when {
+        backingTone == BackingTone.LIGHTEN && surface.alpha >= 0.45f -> palette.copy(
+            cardSurface = surface,
+            cardBorder = Color(0xB3FFFFFF),
+            primaryText = Color(0xFF0B1324),
+            secondaryText = Color(0xFF334155),
+            accent = Color(0xFF0284C7)
+        )
+        backingTone == BackingTone.DARKEN -> palette.copy(
+            cardSurface = surface,
+            cardBorder = Color(0x45FFFFFF),
+            primaryText = Color(0xFFF8FAFC),
+            secondaryText = Color(0xFFDCE7F5),
+            accent = Color(0xFF38BDF8)
+        )
+        else -> palette.copy(cardSurface = surface)
+    }
 }
 
 @Composable
@@ -327,6 +362,7 @@ fun HourlyForecastCard(
     tempUnit: TempUnit,
     palette: SkyPalette,
     transparencyDeltaPct: Int = 0,
+    backingTone: BackingTone = BackingTone.DEFAULT,
     fontBoostSp: Int = 0,
     modifier: Modifier = Modifier
 ) {
@@ -336,7 +372,7 @@ fun HourlyForecastCard(
         UserPreferencesRepository.MIN_FORECAST_FONT_BOOST_SP,
         UserPreferencesRepository.MAX_FORECAST_FONT_BOOST_SP
     )
-    val cardSurface = resolveForecastCardSurfaceColor(palette, transparencyDeltaPct)
+    val effPalette = resolveEffectiveForecastPalette(palette, transparencyDeltaPct, backingTone)
     val pillAlpha = if (transparencyDeltaPct < 0) 0.22f else 0.14f
     val headerStyle = if (safeBoost == 0) {
         MaterialTheme.typography.labelMedium
@@ -365,8 +401,8 @@ fun HourlyForecastCard(
     }
 
     GlassCard(
-        palette = palette,
-        surfaceColorOverride = cardSurface,
+        palette = effPalette,
+        surfaceColorOverride = effPalette.cardSurface,
         modifier = modifier,
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
@@ -380,20 +416,20 @@ fun HourlyForecastCard(
                 Icon(
                     imageVector = Icons.Default.Schedule,
                     contentDescription = null,
-                    tint = palette.secondaryText,
+                    tint = effPalette.secondaryText,
                     modifier = Modifier.size(15.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 SingleLineText(
                     text = "HOURLY FORECAST",
-                    color = palette.secondaryText,
+                    color = effPalette.secondaryText,
                     style = headerStyle,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
                 SingleLineText(
                     text = "Next 24h",
-                    color = palette.secondaryText,
+                    color = effPalette.secondaryText,
                     style = subHeaderStyle
                 )
             }
@@ -410,14 +446,14 @@ fun HourlyForecastCard(
                             .widthIn(min = (60 + safeBoost * 5).dp)
                             .heightIn(min = (78 + safeBoost * 6).dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(palette.cardBorder.copy(alpha = pillAlpha))
+                            .background(effPalette.cardBorder.copy(alpha = pillAlpha))
                             .padding(horizontal = 8.dp, vertical = 5.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
                         SingleLineText(
                             text = item.displayHour,
-                            color = palette.primaryText,
+                            color = effPalette.primaryText,
                             style = hourTextStyle,
                             fontWeight = if (item.displayHour == "Now") FontWeight.Bold else FontWeight.Medium,
                             textAlign = TextAlign.Center
@@ -431,7 +467,7 @@ fun HourlyForecastCard(
 
                         SingleLineText(
                             text = if (item.precipProbability > 0) "${item.precipProbability}%" else " ",
-                            color = palette.accent,
+                            color = effPalette.accent,
                             style = precipTextStyle,
                             fontWeight = FontWeight.SemiBold,
                             textAlign = TextAlign.Center
@@ -439,7 +475,7 @@ fun HourlyForecastCard(
 
                         SingleLineText(
                             text = tempUnit.format(item.tempCelsius),
-                            color = palette.primaryText,
+                            color = effPalette.primaryText,
                             style = tempTextStyle,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
@@ -457,6 +493,7 @@ fun FiveDayForecastCard(
     tempUnit: TempUnit,
     palette: SkyPalette,
     transparencyDeltaPct: Int = 0,
+    backingTone: BackingTone = BackingTone.DEFAULT,
     fontBoostSp: Int = 0,
     modifier: Modifier = Modifier
 ) {
@@ -467,7 +504,7 @@ fun FiveDayForecastCard(
         UserPreferencesRepository.MIN_FORECAST_FONT_BOOST_SP,
         UserPreferencesRepository.MAX_FORECAST_FONT_BOOST_SP
     )
-    val cardSurface = resolveForecastCardSurfaceColor(palette, transparencyDeltaPct)
+    val effPalette = resolveEffectiveForecastPalette(palette, transparencyDeltaPct, backingTone)
     val overallMin = tenDays.minOf { it.lowCelsius }
     val overallMax = tenDays.maxOf { it.highCelsius }
     val safeSpan = (overallMax - overallMin).coerceAtLeast(1.0)
@@ -489,8 +526,8 @@ fun FiveDayForecastCard(
     val dateMaxSp = (11.8f + safeBoost).sp
 
     GlassCard(
-        palette = palette,
-        surfaceColorOverride = cardSurface,
+        palette = effPalette,
+        surfaceColorOverride = effPalette.cardSurface,
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
     ) {
@@ -520,20 +557,20 @@ fun FiveDayForecastCard(
                     Icon(
                         imageVector = Icons.Default.CalendarMonth,
                         contentDescription = null,
-                        tint = palette.secondaryText,
+                        tint = effPalette.secondaryText,
                         modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     SingleLineText(
                         text = headerLabel,
-                        color = palette.secondaryText,
+                        color = effPalette.secondaryText,
                         style = headerStyle,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
                     SingleLineText(
                         text = "Open-Meteo · NWS",
-                        color = palette.secondaryText.copy(alpha = 0.72f),
+                        color = effPalette.secondaryText.copy(alpha = 0.72f),
                         style = subHeaderStyle
                     )
                 }
@@ -543,7 +580,7 @@ fun FiveDayForecastCard(
                 tenDays.forEachIndexed { idx, day ->
                     if (idx > 0) {
                         HorizontalDivider(
-                            color = palette.cardBorder.copy(alpha = 0.30f)
+                            color = effPalette.cardBorder.copy(alpha = 0.30f)
                         )
                     }
 
@@ -566,7 +603,7 @@ fun FiveDayForecastCard(
                     ) {
                         AutoFitSingleLineText(
                             text = day.monthDayWeekLabel,
-                            color = palette.primaryText,
+                            color = effPalette.primaryText,
                             maxFontSize = dateMaxSp,
                             minFontSize = 8.5.sp,
                             fontWeight = if (idx == 0) FontWeight.Bold else FontWeight.SemiBold,
@@ -588,7 +625,7 @@ fun FiveDayForecastCard(
                                 Spacer(modifier = Modifier.width(3.dp))
                                 AutoFitSingleLineText(
                                     text = "${day.precipProbability.safeClamp(0, 100)}%",
-                                    color = palette.accent,
+                                    color = effPalette.accent,
                                     maxFontSize = precipMaxSp,
                                     minFontSize = 8.5.sp,
                                     fontWeight = FontWeight.Bold,
@@ -610,7 +647,7 @@ fun FiveDayForecastCard(
                             if (trackW > 0f && trackH > 0f) {
                                 val r = CornerRadius(trackH / 2f, trackH / 2f)
                                 drawRoundRect(
-                                    color = palette.secondaryText.copy(alpha = 0.22f),
+                                    color = effPalette.secondaryText.copy(alpha = 0.22f),
                                     size = Size(trackW, trackH),
                                     cornerRadius = r
                                 )
@@ -641,7 +678,7 @@ fun FiveDayForecastCard(
                         ) {
                             AutoFitSingleLineText(
                                 text = "${hiVal}° / ${loVal}°",
-                                color = palette.primaryText,
+                                color = effPalette.primaryText,
                                 maxFontSize = hiLoMaxSp,
                                 minFontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -652,7 +689,7 @@ fun FiveDayForecastCard(
                             )
                             AutoFitSingleLineText(
                                 text = "Precip:${day.precipProbability.safeClamp(0, 100)}%",
-                                color = palette.accent,
+                                color = effPalette.accent,
                                 maxFontSize = precipMaxSp,
                                 minFontSize = 8.5.sp,
                                 fontWeight = FontWeight.SemiBold,

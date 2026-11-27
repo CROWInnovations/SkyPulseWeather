@@ -261,8 +261,11 @@ class WeatherDomainTest {
             }
         }
         assertEquals(74, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_TIME_FONT_SP)
+        assertEquals(74, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_FULL_SCREEN_TEMP_FONT_SP)
         assertEquals(74, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_TEMP_FONT_SP)
         assertEquals(10, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_FORECAST_FONT_BOOST_SP)
+        assertEquals(0, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MIN_WIDGET_DATA_FONT_DELTA_SP)
+        assertEquals(5, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_DATA_FONT_DELTA_SP)
         assertEquals(127, com.crowinnovations.skypulseweather.ui.components.HoneycombColorWheel.wheelCells.size)
         assertEquals(
             "#FFFFFF",
@@ -277,5 +280,51 @@ class WeatherDomainTest {
             listOf("Off", "Left of Time", "Right of Time", "Below Time"),
             com.crowinnovations.skypulseweather.domain.DateDisplayPosition.entries.map { it.label }
         )
+        assertEquals(
+            listOf("Darken", "Default", "Lighten"),
+            com.crowinnovations.skypulseweather.domain.BackingTone.entries.map { it.label }
+        )
+    }
+
+    @Test
+    fun separatedFullScreenAndWidgetSettingsAndSliderBackingWorkIndependently() {
+        val defaults = com.crowinnovations.skypulseweather.data.local.AppPreferences()
+        val updatedWidgetOnly = defaults.copy(
+            widgetTempFontSizeSp = 66,
+            widgetTempFontStyle = DisplayFontStyle.SERIF,
+            widgetTempTextColorArgb = DisplayTextColor.MINT.argb,
+            widgetShowTimeDisplay = true,
+            widgetTimeTextColorArgb = DisplayTextColor.GOLD.argb,
+            widgetDataFontDeltaSp = 5,
+            widgetSliderBackingTone = com.crowinnovations.skypulseweather.domain.BackingTone.DARKEN,
+            widgetSliderTransparencyDeltaPct = -30
+        )
+        // Full-screen fields remain completely untouched when widget fields change
+        assertEquals(46, updatedWidgetOnly.fullScreenTempFontSizeSp)
+        assertEquals(DisplayFontStyle.DEFAULT, updatedWidgetOnly.fullScreenTempFontStyle)
+        assertEquals(DisplayTextColor.WHITE.argb, updatedWidgetOnly.fullScreenTempTextColorArgb)
+        assertFalse(updatedWidgetOnly.fullScreenShowTimeDisplay)
+        assertEquals(0, updatedWidgetOnly.forecastFontBoostSp)
+
+        // Widget slider backing transparency & tone checks
+        val defaultSlider = com.crowinnovations.skypulseweather.widget.resolveWidgetSliderBackingColor(
+            com.crowinnovations.skypulseweather.domain.BackingTone.DEFAULT,
+            0
+        )
+        val darkenedOpaqueSlider = com.crowinnovations.skypulseweather.widget.resolveWidgetSliderBackingColor(
+            com.crowinnovations.skypulseweather.domain.BackingTone.DARKEN,
+            -40
+        )
+        val fullyTransparentSlider = com.crowinnovations.skypulseweather.widget.resolveWidgetSliderBackingColor(
+            com.crowinnovations.skypulseweather.domain.BackingTone.DEFAULT,
+            60
+        )
+        val lightenedOpaqueSlider = com.crowinnovations.skypulseweather.widget.resolveWidgetSliderBackingColor(
+            com.crowinnovations.skypulseweather.domain.BackingTone.LIGHTEN,
+            -40
+        )
+        assertTrue(darkenedOpaqueSlider.alpha > defaultSlider.alpha)
+        assertEquals(0.0f, fullyTransparentSlider.alpha, 0.001f)
+        assertTrue(lightenedOpaqueSlider.red > 0.85f && lightenedOpaqueSlider.alpha > 0.70f)
     }
 }

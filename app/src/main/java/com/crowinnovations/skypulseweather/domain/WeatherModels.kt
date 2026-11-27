@@ -63,6 +63,12 @@ enum class DateDisplayPosition(val label: String) {
     BELOW_TIME("Below Time")
 }
 
+enum class BackingTone(val label: String) {
+    DARKEN("Darken"),
+    DEFAULT("Default"),
+    LIGHTEN("Lighten")
+}
+
 enum class WeatherCondition(val label: String) {
     CLEAR_DAY("Clear"),
     CLEAR_NIGHT("Clear night"),

@@ -50,6 +50,8 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -100,6 +102,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.crowinnovations.skypulseweather.R
 import com.crowinnovations.skypulseweather.data.local.AppPreferences
 import com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository
+import com.crowinnovations.skypulseweather.domain.BackingTone
 import com.crowinnovations.skypulseweather.domain.DateDisplayPosition
 import com.crowinnovations.skypulseweather.domain.DisplayFontStyle
 import com.crowinnovations.skypulseweather.domain.DisplayTextColor
@@ -412,16 +415,30 @@ fun SettingsDialog(
     onTempUnitSelect: (TempUnit) -> Unit,
     onWindUnitSelect: (WindUnit) -> Unit,
     onThemeModeSelect: (ThemeMode) -> Unit,
-    onShowTimeDisplaySelect: (Boolean) -> Unit,
-    onDateDisplayPositionSelect: (DateDisplayPosition) -> Unit,
-    onAdjustTimeFontSize: (Int) -> Unit,
-    onTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
-    onTimeTextColorSelect: (Int) -> Unit,
+    // Full Screen Display callbacks
+    onFullScreenShowTimeSelect: (Boolean) -> Unit,
+    onFullScreenDatePositionSelect: (DateDisplayPosition) -> Unit,
+    onAdjustFullScreenTimeFontSize: (Int) -> Unit,
+    onFullScreenTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
+    onFullScreenTimeTextColorSelect: (Int) -> Unit,
+    onAdjustFullScreenTempFontSize: (Int) -> Unit,
+    onFullScreenTempFontStyleSelect: (DisplayFontStyle) -> Unit,
+    onFullScreenTempTextColorSelect: (Int) -> Unit,
+    onAdjustForecastTransparency: (Int) -> Unit = {},
+    onForecastBackingToneSelect: (BackingTone) -> Unit = {},
+    onAdjustForecastFontBoost: (Int) -> Unit = {},
+    // Widget Display callbacks
+    onWidgetShowTimeSelect: (Boolean) -> Unit,
+    onWidgetDatePositionSelect: (DateDisplayPosition) -> Unit,
+    onAdjustWidgetTimeFontSize: (Int) -> Unit,
+    onWidgetTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
+    onWidgetTimeTextColorSelect: (Int) -> Unit,
     onAdjustWidgetTempFontSize: (Int) -> Unit,
     onWidgetTempFontStyleSelect: (DisplayFontStyle) -> Unit,
     onWidgetTempTextColorSelect: (Int) -> Unit,
-    onAdjustForecastTransparency: (Int) -> Unit = {},
-    onAdjustForecastFontBoost: (Int) -> Unit = {},
+    onAdjustWidgetDataFontDelta: (Int) -> Unit = {},
+    onAdjustWidgetSliderTransparency: (Int) -> Unit = {},
+    onWidgetSliderBackingToneSelect: (BackingTone) -> Unit = {},
     onGatewaySave: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -551,8 +568,8 @@ fun SettingsDialog(
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        // Group 1: Units & Appearance
-                        SettingsGroupCard(title = "UNITS & THEME", hairline = hairline) {
+                        // Group 1: Global Units (Shared across Full Screen & Widget)
+                        SettingsGroupCard(title = "GENERAL UNITS", hairline = hairline) {
                             CompactSettingRow(label = "Temperature") {
                                 CompactSegmentedControl(
                                     options = listOf(
@@ -575,6 +592,20 @@ fun SettingsDialog(
                                     }
                                 )
                             }
+                        }
+
+                        // ============================================================
+                        // SECTION A: FULL SCREEN DISPLAY
+                        // ============================================================
+                        Spacer(modifier = Modifier.height(2.dp))
+                        SettingsDisplaySectionBanner(
+                            title = "FULL SCREEN DISPLAY",
+                            subtitle = "App window theme, forecast cards & typography",
+                            icon = Icons.Default.Smartphone,
+                            accentColor = MaterialTheme.colorScheme.primary
+                        )
+
+                        SettingsGroupCard(title = "FULL SCREEN · FORECAST & THEME", hairline = hairline) {
                             CompactSettingRow(label = "Theme") {
                                 CompactSegmentedControl(
                                     options = listOf(
@@ -593,10 +624,17 @@ fun SettingsDialog(
                                     }
                                 )
                             }
-                        }
-
-                        // Group 1B: Full-Screen Hourly & 10-Day Forecast Readability
-                        SettingsGroupCard(title = "HOURLY & 10-DAY FORECAST", hairline = hairline) {
+                            CompactSettingRow(label = "Card Backing") {
+                                CompactSegmentedControl(
+                                    options = BackingTone.entries.map { tone ->
+                                        tone.label to (preferences.forecastBackingTone == tone)
+                                    },
+                                    compactItems = true,
+                                    onSelectIndex = { idx ->
+                                        BackingTone.entries.getOrNull(idx)?.let(onForecastBackingToneSelect)
+                                    }
+                                )
+                            }
                             CompactSettingRow(label = "Transparency") {
                                 val trDelta = preferences.forecastTransparencyDeltaPct
                                 val trLabel = when {
@@ -632,8 +670,156 @@ fun SettingsDialog(
                             }
                         }
 
-                        // Group 2: Temperature Display (Full Screen & Widget)
-                        SettingsGroupCard(title = "TEMPERATURE DISPLAY", hairline = hairline) {
+                        SettingsGroupCard(title = "FULL SCREEN · TEMPERATURE", hairline = hairline) {
+                            CompactSettingRow(label = "Font Size") {
+                                FontSizeStepper(
+                                    currentSp = preferences.fullScreenTempFontSizeSp,
+                                    canDecrease = preferences.fullScreenTempFontSizeSp > UserPreferencesRepository.MIN_FULL_SCREEN_TEMP_FONT_SP,
+                                    canIncrease = preferences.fullScreenTempFontSizeSp < UserPreferencesRepository.MAX_FULL_SCREEN_TEMP_FONT_SP,
+                                    onDecrease = {
+                                        onAdjustFullScreenTempFontSize(-UserPreferencesRepository.FULL_SCREEN_TEMP_FONT_STEP_SP)
+                                    },
+                                    onIncrease = {
+                                        onAdjustFullScreenTempFontSize(UserPreferencesRepository.FULL_SCREEN_TEMP_FONT_STEP_SP)
+                                    }
+                                )
+                            }
+                            CompactSettingRow(label = "Font Style") {
+                                CompactSegmentedControl(
+                                    options = DisplayFontStyle.entries.map { style ->
+                                        style.label to (preferences.fullScreenTempFontStyle == style)
+                                    },
+                                    compactItems = true,
+                                    onSelectIndex = { idx ->
+                                        DisplayFontStyle.entries.getOrNull(idx)?.let(onFullScreenTempFontStyleSelect)
+                                    }
+                                )
+                            }
+                            CompactSettingRow(label = "Color") {
+                                ColorWheelPickerButton(
+                                    selectedArgb = preferences.fullScreenTempTextColorArgb,
+                                    dialogTitle = "Full Screen Temperature Color:",
+                                    onColorSelected = onFullScreenTempTextColorSelect
+                                )
+                            }
+                        }
+
+                        SettingsGroupCard(title = "FULL SCREEN · TOP TIME & DATE", hairline = hairline) {
+                            CompactSettingRow(label = "Show Time") {
+                                CompactSegmentedControl(
+                                    options = listOf(
+                                        "Off" to !preferences.fullScreenShowTimeDisplay,
+                                        "On" to preferences.fullScreenShowTimeDisplay
+                                    ),
+                                    onSelectIndex = { idx ->
+                                        onFullScreenShowTimeSelect(idx == 1)
+                                    }
+                                )
+                            }
+
+                            CompactSettingRow(label = "Date Display") {
+                                DatePositionDropdownSelector(
+                                    selected = preferences.fullScreenDateDisplayPosition,
+                                    onSelect = onFullScreenDatePositionSelect
+                                )
+                            }
+
+                            AnimatedVisibility(visible = preferences.fullScreenShowTimeDisplay) {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    CompactSettingRow(label = "Font Size") {
+                                        FontSizeStepper(
+                                            currentSp = preferences.fullScreenTimeFontSizeSp,
+                                            canDecrease = preferences.fullScreenTimeFontSizeSp > UserPreferencesRepository.MIN_TIME_FONT_SP,
+                                            canIncrease = preferences.fullScreenTimeFontSizeSp < UserPreferencesRepository.MAX_TIME_FONT_SP,
+                                            onDecrease = {
+                                                onAdjustFullScreenTimeFontSize(-UserPreferencesRepository.TIME_FONT_STEP_SP)
+                                            },
+                                            onIncrease = {
+                                                onAdjustFullScreenTimeFontSize(UserPreferencesRepository.TIME_FONT_STEP_SP)
+                                            }
+                                        )
+                                    }
+                                    CompactSettingRow(label = "Font Style") {
+                                        CompactSegmentedControl(
+                                            options = DisplayFontStyle.entries.map { style ->
+                                                style.label to (preferences.fullScreenTimeFontStyle == style)
+                                            },
+                                            compactItems = true,
+                                            onSelectIndex = { idx ->
+                                                DisplayFontStyle.entries.getOrNull(idx)?.let(onFullScreenTimeFontStyleSelect)
+                                            }
+                                        )
+                                    }
+                                    CompactSettingRow(label = "Color") {
+                                        ColorWheelPickerButton(
+                                            selectedArgb = preferences.fullScreenTimeTextColorArgb,
+                                            dialogTitle = "Full Screen Time Color:",
+                                            onColorSelected = onFullScreenTimeTextColorSelect
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // ============================================================
+                        // SECTION B: WIDGET DISPLAY
+                        // ============================================================
+                        Spacer(modifier = Modifier.height(2.dp))
+                        SettingsDisplaySectionBanner(
+                            title = "WIDGET DISPLAY",
+                            subtitle = "Home screen widget 10-day slider, data & colors",
+                            icon = Icons.Default.Widgets,
+                            accentColor = MaterialTheme.colorScheme.secondary
+                        )
+
+                        SettingsGroupCard(title = "WIDGET · 10-DAY SLIDER & DATA", hairline = hairline) {
+                            CompactSettingRow(label = "Font Size") {
+                                val wBoost = preferences.widgetDataFontDeltaSp
+                                FontBoostStepper(
+                                    currentLabel = if (wBoost == 0) "Default" else "+${wBoost}sp",
+                                    canDecrease = wBoost > UserPreferencesRepository.MIN_WIDGET_DATA_FONT_DELTA_SP,
+                                    canIncrease = wBoost < UserPreferencesRepository.MAX_WIDGET_DATA_FONT_DELTA_SP,
+                                    onDecrease = {
+                                        onAdjustWidgetDataFontDelta(-UserPreferencesRepository.WIDGET_DATA_FONT_DELTA_STEP_SP)
+                                    },
+                                    onIncrease = {
+                                        onAdjustWidgetDataFontDelta(UserPreferencesRepository.WIDGET_DATA_FONT_DELTA_STEP_SP)
+                                    }
+                                )
+                            }
+                            CompactSettingRow(label = "Slider Backing") {
+                                CompactSegmentedControl(
+                                    options = BackingTone.entries.map { tone ->
+                                        tone.label to (preferences.widgetSliderBackingTone == tone)
+                                    },
+                                    compactItems = true,
+                                    onSelectIndex = { idx ->
+                                        BackingTone.entries.getOrNull(idx)?.let(onWidgetSliderBackingToneSelect)
+                                    }
+                                )
+                            }
+                            CompactSettingRow(label = "Transparency") {
+                                val wTrDelta = preferences.widgetSliderTransparencyDeltaPct
+                                val wTrLabel = when {
+                                    wTrDelta == 0 -> "Default"
+                                    wTrDelta > 0 -> "+${wTrDelta}%"
+                                    else -> "${wTrDelta}%"
+                                }
+                                FontBoostStepper(
+                                    currentLabel = wTrLabel,
+                                    canDecrease = wTrDelta > UserPreferencesRepository.MIN_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT,
+                                    canIncrease = wTrDelta < UserPreferencesRepository.MAX_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT,
+                                    onDecrease = {
+                                        onAdjustWidgetSliderTransparency(-UserPreferencesRepository.WIDGET_SLIDER_TRANSPARENCY_STEP_PCT)
+                                    },
+                                    onIncrease = {
+                                        onAdjustWidgetSliderTransparency(UserPreferencesRepository.WIDGET_SLIDER_TRANSPARENCY_STEP_PCT)
+                                    }
+                                )
+                            }
+                        }
+
+                        SettingsGroupCard(title = "WIDGET · TEMPERATURE", hairline = hairline) {
                             CompactSettingRow(label = "Font Size") {
                                 FontSizeStepper(
                                     currentSp = preferences.widgetTempFontSizeSp,
@@ -661,64 +847,63 @@ fun SettingsDialog(
                             CompactSettingRow(label = "Color") {
                                 ColorWheelPickerButton(
                                     selectedArgb = preferences.widgetTempTextColorArgb,
-                                    dialogTitle = "Pick a Color:",
+                                    dialogTitle = "Widget Temperature Color:",
                                     onColorSelected = onWidgetTempTextColorSelect
                                 )
                             }
                         }
 
-                        // Group 3: Top Centered Time & Date Display
-                        SettingsGroupCard(title = "TOP TIME DISPLAY", hairline = hairline) {
+                        SettingsGroupCard(title = "WIDGET · TOP TIME & DATE", hairline = hairline) {
                             CompactSettingRow(label = "Show Time") {
                                 CompactSegmentedControl(
                                     options = listOf(
-                                        "Off" to !preferences.showTimeDisplay,
-                                        "On" to preferences.showTimeDisplay
+                                        "Off" to !preferences.widgetShowTimeDisplay,
+                                        "On" to preferences.widgetShowTimeDisplay
                                     ),
                                     onSelectIndex = { idx ->
-                                        onShowTimeDisplaySelect(idx == 1)
+                                        onWidgetShowTimeSelect(idx == 1)
                                     }
                                 )
                             }
 
                             CompactSettingRow(label = "Date Display") {
                                 DatePositionDropdownSelector(
-                                    selected = preferences.dateDisplayPosition,
-                                    onSelect = onDateDisplayPositionSelect
+                                    selected = preferences.widgetDateDisplayPosition,
+                                    onSelect = onWidgetDatePositionSelect
                                 )
                             }
 
-                            AnimatedVisibility(visible = preferences.showTimeDisplay) {
+                            AnimatedVisibility(visible = preferences.widgetShowTimeDisplay) {
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                     CompactSettingRow(label = "Font Size") {
                                         FontSizeStepper(
-                                            currentSp = preferences.timeFontSizeSp,
-                                            canDecrease = preferences.timeFontSizeSp > UserPreferencesRepository.MIN_TIME_FONT_SP,
-                                            canIncrease = preferences.timeFontSizeSp < UserPreferencesRepository.MAX_TIME_FONT_SP,
+                                            currentSp = preferences.widgetTimeFontSizeSp,
+                                            canDecrease = preferences.widgetTimeFontSizeSp > UserPreferencesRepository.MIN_TIME_FONT_SP,
+                                            canIncrease = preferences.widgetTimeFontSizeSp < UserPreferencesRepository.MAX_TIME_FONT_SP,
                                             onDecrease = {
-                                                onAdjustTimeFontSize(-UserPreferencesRepository.TIME_FONT_STEP_SP)
+                                                onAdjustWidgetTimeFontSize(-UserPreferencesRepository.TIME_FONT_STEP_SP)
                                             },
                                             onIncrease = {
-                                                onAdjustTimeFontSize(UserPreferencesRepository.TIME_FONT_STEP_SP)
+                                                onAdjustWidgetTimeFontSize(UserPreferencesRepository.TIME_FONT_STEP_SP)
                                             }
                                         )
                                     }
                                     CompactSettingRow(label = "Font Style") {
                                         CompactSegmentedControl(
                                             options = DisplayFontStyle.entries.map { style ->
-                                                style.label to (preferences.timeFontStyle == style)
+                                                style.label to (preferences.widgetTimeFontStyle == style)
                                             },
                                             compactItems = true,
                                             onSelectIndex = { idx ->
-                                                DisplayFontStyle.entries.getOrNull(idx)?.let(onTimeFontStyleSelect)
+                                                DisplayFontStyle.entries.getOrNull(idx)?.let(onWidgetTimeFontStyleSelect)
                                             }
                                         )
                                     }
                                     CompactSettingRow(label = "Color") {
                                         ColorWheelPickerButton(
-                                            selectedArgb = preferences.timeTextColorArgb,
-                                            dialogTitle = "Pick a Color:",
-                                            onColorSelected = onTimeTextColorSelect
+                                            selectedArgb = preferences.widgetTimeTextColorArgb,
+                                            dialogTitle = "Widget Time Color:",
+                                            onColorSelected = onWidgetTimeTextColorSelect
                                         )
                                     }
                                 }
@@ -923,6 +1108,46 @@ fun SettingsDialog(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsDisplaySectionBanner(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    accentColor: Color
+) {
+    val shape = RoundedCornerShape(10.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(accentColor.copy(alpha = 0.14f))
+            .border(1.dp, accentColor.copy(alpha = 0.48f), shape)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accentColor,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            SingleLineText(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = accentColor,
+                fontWeight = FontWeight.ExtraBold
+            )
+            SingleLineText(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

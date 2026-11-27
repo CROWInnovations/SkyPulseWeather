@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.crowinnovations.skypulseweather.R
 import com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository
+import com.crowinnovations.skypulseweather.domain.BackingTone
 import com.crowinnovations.skypulseweather.domain.DateDisplayPosition
 import com.crowinnovations.skypulseweather.domain.DisplayFontStyle
 import com.crowinnovations.skypulseweather.domain.DisplayTextColor
@@ -118,16 +119,28 @@ fun WeatherScreen(
     onTempUnitSelect: (TempUnit) -> Unit,
     onWindUnitSelect: (WindUnit) -> Unit,
     onThemeModeSelect: (com.crowinnovations.skypulseweather.domain.ThemeMode) -> Unit,
-    onShowTimeDisplaySelect: (Boolean) -> Unit,
-    onDateDisplayPositionSelect: (DateDisplayPosition) -> Unit,
-    onAdjustTimeFontSize: (Int) -> Unit,
-    onTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
-    onTimeTextColorSelect: (Int) -> Unit,
+    onFullScreenShowTimeSelect: (Boolean) -> Unit,
+    onFullScreenDatePositionSelect: (DateDisplayPosition) -> Unit,
+    onAdjustFullScreenTimeFontSize: (Int) -> Unit,
+    onFullScreenTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
+    onFullScreenTimeTextColorSelect: (Int) -> Unit,
+    onAdjustFullScreenTempFontSize: (Int) -> Unit,
+    onFullScreenTempFontStyleSelect: (DisplayFontStyle) -> Unit,
+    onFullScreenTempTextColorSelect: (Int) -> Unit,
+    onAdjustForecastTransparency: (Int) -> Unit = {},
+    onForecastBackingToneSelect: (BackingTone) -> Unit = {},
+    onAdjustForecastFontBoost: (Int) -> Unit = {},
+    onWidgetShowTimeSelect: (Boolean) -> Unit,
+    onWidgetDatePositionSelect: (DateDisplayPosition) -> Unit,
+    onAdjustWidgetTimeFontSize: (Int) -> Unit,
+    onWidgetTimeFontStyleSelect: (DisplayFontStyle) -> Unit,
+    onWidgetTimeTextColorSelect: (Int) -> Unit,
     onAdjustWidgetTempFontSize: (Int) -> Unit,
     onWidgetTempFontStyleSelect: (DisplayFontStyle) -> Unit,
     onWidgetTempTextColorSelect: (Int) -> Unit,
-    onAdjustForecastTransparency: (Int) -> Unit = {},
-    onAdjustForecastFontBoost: (Int) -> Unit = {},
+    onAdjustWidgetDataFontDelta: (Int) -> Unit = {},
+    onAdjustWidgetSliderTransparency: (Int) -> Unit = {},
+    onWidgetSliderBackingToneSelect: (BackingTone) -> Unit = {},
     onGatewaySave: (String) -> Unit
 ) {
     val isDark = rememberIsDarkTheme(uiState.preferences.themeMode)
@@ -160,12 +173,12 @@ fun WeatherScreen(
         )
     }
 
-    val topClockReserveDp = if (!uiState.preferences.showTimeDisplay) {
+    val topClockReserveDp = if (!uiState.preferences.fullScreenShowTimeDisplay) {
         0f
-    } else if (uiState.preferences.dateDisplayPosition == DateDisplayPosition.BELOW_TIME) {
-        (uiState.preferences.timeFontSizeSp * 2.05f + 18f).safeClamp(0f, 150f)
+    } else if (uiState.preferences.fullScreenDateDisplayPosition == DateDisplayPosition.BELOW_TIME) {
+        (uiState.preferences.fullScreenTimeFontSizeSp * 2.05f + 18f).safeClamp(0f, 150f)
     } else {
-        (uiState.preferences.timeFontSizeSp * 1.25f + 14f).safeClamp(0f, 120f)
+        (uiState.preferences.fullScreenTimeFontSizeSp * 1.25f + 14f).safeClamp(0f, 120f)
     }
 
     SkyBackdrop(
@@ -181,12 +194,12 @@ fun WeatherScreen(
                 .fillMaxSize()
                 .safeDrawingPadding()
         ) {
-            if (uiState.preferences.showTimeDisplay) {
+            if (uiState.preferences.fullScreenShowTimeDisplay) {
                 TopCenteredClockBar(
-                    fontSizeSp = uiState.preferences.timeFontSizeSp,
-                    fontStylePref = uiState.preferences.timeFontStyle,
-                    textColorArgb = uiState.preferences.timeTextColorArgb,
-                    datePosition = uiState.preferences.dateDisplayPosition
+                    fontSizeSp = uiState.preferences.fullScreenTimeFontSizeSp,
+                    fontStylePref = uiState.preferences.fullScreenTimeFontStyle,
+                    textColorArgb = uiState.preferences.fullScreenTimeTextColorArgb,
+                    datePosition = uiState.preferences.fullScreenDateDisplayPosition
                 )
             }
 
@@ -284,10 +297,11 @@ fun WeatherScreen(
                         isRefreshing = uiState.isRefreshing,
                         tempUnit = uiState.preferences.tempUnit,
                         windUnit = uiState.preferences.windUnit,
-                        tempFontSizeSp = uiState.preferences.widgetTempFontSizeSp,
-                        tempFontStyle = uiState.preferences.widgetTempFontStyle,
-                        tempTextColorArgb = uiState.preferences.widgetTempTextColorArgb,
+                        tempFontSizeSp = uiState.preferences.fullScreenTempFontSizeSp,
+                        tempFontStyle = uiState.preferences.fullScreenTempFontStyle,
+                        tempTextColorArgb = uiState.preferences.fullScreenTempTextColorArgb,
                         forecastTransparencyDeltaPct = uiState.preferences.forecastTransparencyDeltaPct,
+                        forecastBackingTone = uiState.preferences.forecastBackingTone,
                         forecastFontBoostSp = uiState.preferences.forecastFontBoostSp,
                         palette = pagePalette,
                         onRetry = onRefresh
@@ -323,16 +337,28 @@ fun WeatherScreen(
                 onTempUnitSelect = onTempUnitSelect,
                 onWindUnitSelect = onWindUnitSelect,
                 onThemeModeSelect = onThemeModeSelect,
-                onShowTimeDisplaySelect = onShowTimeDisplaySelect,
-                onDateDisplayPositionSelect = onDateDisplayPositionSelect,
-                onAdjustTimeFontSize = onAdjustTimeFontSize,
-                onTimeFontStyleSelect = onTimeFontStyleSelect,
-                onTimeTextColorSelect = onTimeTextColorSelect,
+                onFullScreenShowTimeSelect = onFullScreenShowTimeSelect,
+                onFullScreenDatePositionSelect = onFullScreenDatePositionSelect,
+                onAdjustFullScreenTimeFontSize = onAdjustFullScreenTimeFontSize,
+                onFullScreenTimeFontStyleSelect = onFullScreenTimeFontStyleSelect,
+                onFullScreenTimeTextColorSelect = onFullScreenTimeTextColorSelect,
+                onAdjustFullScreenTempFontSize = onAdjustFullScreenTempFontSize,
+                onFullScreenTempFontStyleSelect = onFullScreenTempFontStyleSelect,
+                onFullScreenTempTextColorSelect = onFullScreenTempTextColorSelect,
+                onAdjustForecastTransparency = onAdjustForecastTransparency,
+                onForecastBackingToneSelect = onForecastBackingToneSelect,
+                onAdjustForecastFontBoost = onAdjustForecastFontBoost,
+                onWidgetShowTimeSelect = onWidgetShowTimeSelect,
+                onWidgetDatePositionSelect = onWidgetDatePositionSelect,
+                onAdjustWidgetTimeFontSize = onAdjustWidgetTimeFontSize,
+                onWidgetTimeFontStyleSelect = onWidgetTimeFontStyleSelect,
+                onWidgetTimeTextColorSelect = onWidgetTimeTextColorSelect,
                 onAdjustWidgetTempFontSize = onAdjustWidgetTempFontSize,
                 onWidgetTempFontStyleSelect = onWidgetTempFontStyleSelect,
                 onWidgetTempTextColorSelect = onWidgetTempTextColorSelect,
-                onAdjustForecastTransparency = onAdjustForecastTransparency,
-                onAdjustForecastFontBoost = onAdjustForecastFontBoost,
+                onAdjustWidgetDataFontDelta = onAdjustWidgetDataFontDelta,
+                onAdjustWidgetSliderTransparency = onAdjustWidgetSliderTransparency,
+                onWidgetSliderBackingToneSelect = onWidgetSliderBackingToneSelect,
                 onGatewaySave = onGatewaySave,
                 onDismiss = onCloseSettings
             )
@@ -713,10 +739,11 @@ private fun LocationForecastPage(
     isRefreshing: Boolean,
     tempUnit: TempUnit,
     windUnit: WindUnit,
-    tempFontSizeSp: Int = UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_SP,
+    tempFontSizeSp: Int = UserPreferencesRepository.DEFAULT_FULL_SCREEN_TEMP_FONT_SP,
     tempFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
     tempTextColorArgb: Int = DisplayTextColor.WHITE.argb,
     forecastTransparencyDeltaPct: Int = 0,
+    forecastBackingTone: BackingTone = BackingTone.DEFAULT,
     forecastFontBoostSp: Int = 0,
     palette: SkyPalette,
     onRetry: () -> Unit
@@ -802,6 +829,7 @@ private fun LocationForecastPage(
                         tempUnit = tempUnit,
                         palette = palette,
                         transparencyDeltaPct = forecastTransparencyDeltaPct,
+                        backingTone = forecastBackingTone,
                         fontBoostSp = forecastFontBoostSp
                     )
                     Spacer(modifier = Modifier.height(10.dp))
@@ -811,6 +839,7 @@ private fun LocationForecastPage(
                         tempUnit = tempUnit,
                         palette = palette,
                         transparencyDeltaPct = forecastTransparencyDeltaPct,
+                        backingTone = forecastBackingTone,
                         fontBoostSp = forecastFontBoostSp
                     )
                 }
@@ -846,6 +875,7 @@ private fun LocationForecastPage(
                     tempUnit = tempUnit,
                     palette = palette,
                     transparencyDeltaPct = forecastTransparencyDeltaPct,
+                    backingTone = forecastBackingTone,
                     fontBoostSp = forecastFontBoostSp
                 )
 
@@ -858,6 +888,7 @@ private fun LocationForecastPage(
                     tempUnit = tempUnit,
                     palette = palette,
                     transparencyDeltaPct = forecastTransparencyDeltaPct,
+                    backingTone = forecastBackingTone,
                     fontBoostSp = forecastFontBoostSp
                 )
             }

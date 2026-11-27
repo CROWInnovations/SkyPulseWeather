@@ -293,21 +293,6 @@ class WeatherViewModel @Inject constructor(
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch {
             prefsRepository.setThemeMode(mode)
-            repository.notifyWidgetsChanged()
-        }
-    }
-
-    fun setShowTimeDisplay(enabled: Boolean) {
-        viewModelScope.launch {
-            prefsRepository.setShowTimeDisplay(enabled)
-            repository.notifyWidgetsChanged()
-        }
-    }
-
-    fun setDateDisplayPosition(position: DateDisplayPosition) {
-        viewModelScope.launch {
-            prefsRepository.setDateDisplayPosition(position)
-            repository.notifyWidgetsChanged()
         }
     }
 
@@ -317,23 +302,105 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun adjustTimeFontSize(deltaSp: Int) {
+    // Full Screen Display handlers
+    fun setFullScreenShowTimeDisplay(enabled: Boolean) {
         viewModelScope.launch {
-            prefsRepository.adjustTimeFontSize(deltaSp)
+            prefsRepository.setFullScreenShowTimeDisplay(enabled)
+        }
+    }
+
+    fun setFullScreenDateDisplayPosition(position: DateDisplayPosition) {
+        viewModelScope.launch {
+            prefsRepository.setFullScreenDateDisplayPosition(position)
+        }
+    }
+
+    fun adjustFullScreenTimeFontSize(deltaSp: Int) {
+        viewModelScope.launch {
+            prefsRepository.adjustFullScreenTimeFontSize(deltaSp)
+        }
+    }
+
+    fun setFullScreenTimeFontStyle(style: DisplayFontStyle) {
+        viewModelScope.launch {
+            prefsRepository.setFullScreenTimeFontStyle(style)
+        }
+    }
+
+    fun setFullScreenTimeTextColorArgb(argb: Int) {
+        viewModelScope.launch {
+            prefsRepository.setFullScreenTimeTextColorArgb(argb)
+        }
+    }
+
+    fun adjustFullScreenTempFontSize(deltaSp: Int) {
+        viewModelScope.launch {
+            prefsRepository.adjustFullScreenTempFontSize(deltaSp)
+        }
+    }
+
+    fun setFullScreenTempFontStyle(style: DisplayFontStyle) {
+        viewModelScope.launch {
+            prefsRepository.setFullScreenTempFontStyle(style)
+        }
+    }
+
+    fun setFullScreenTempTextColorArgb(argb: Int) {
+        viewModelScope.launch {
+            prefsRepository.setFullScreenTempTextColorArgb(argb)
+        }
+    }
+
+    fun adjustForecastTransparencyDelta(deltaPct: Int) {
+        viewModelScope.launch {
+            prefsRepository.adjustForecastTransparencyDelta(deltaPct)
+        }
+    }
+
+    fun setForecastBackingTone(tone: com.crowinnovations.skypulseweather.domain.BackingTone) {
+        viewModelScope.launch {
+            prefsRepository.setForecastBackingTone(tone)
+        }
+    }
+
+    fun adjustForecastFontBoost(deltaSp: Int) {
+        viewModelScope.launch {
+            prefsRepository.adjustForecastFontBoost(deltaSp)
+        }
+    }
+
+    // Widget Display handlers
+    fun setWidgetShowTimeDisplay(enabled: Boolean) {
+        viewModelScope.launch {
+            prefsRepository.setWidgetShowTimeDisplay(enabled)
             repository.notifyWidgetsChanged()
         }
     }
 
-    fun setTimeFontStyle(style: DisplayFontStyle) {
+    fun setWidgetDateDisplayPosition(position: DateDisplayPosition) {
         viewModelScope.launch {
-            prefsRepository.setTimeFontStyle(style)
+            prefsRepository.setWidgetDateDisplayPosition(position)
             repository.notifyWidgetsChanged()
         }
     }
 
-    fun setTimeTextColorArgb(argb: Int) {
+    fun adjustWidgetTimeFontSize(deltaSp: Int) {
         viewModelScope.launch {
-            prefsRepository.setTimeTextColorArgb(argb)
+            prefsRepository.adjustWidgetTimeFontSize(deltaSp)
+            repository.notifyWidgetsChanged()
+        }
+    }
+
+    fun setWidgetTimeFontStyle(style: DisplayFontStyle) {
+        viewModelScope.launch {
+            prefsRepository.setWidgetTimeFontStyle(style)
+            repository.notifyWidgetsChanged()
+        }
+    }
+
+    fun setWidgetTimeTextColorArgb(argb: Int) {
+        viewModelScope.launch {
+            prefsRepository.setWidgetTimeTextColorArgb(argb)
             repository.notifyWidgetsChanged()
         }
     }
@@ -352,21 +419,30 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
-    fun adjustForecastTransparencyDelta(deltaPct: Int) {
-        viewModelScope.launch {
-            prefsRepository.adjustForecastTransparencyDelta(deltaPct)
-        }
-    }
-
-    fun adjustForecastFontBoost(deltaSp: Int) {
-        viewModelScope.launch {
-            prefsRepository.adjustForecastFontBoost(deltaSp)
-        }
-    }
-
     fun setWidgetTempTextColorArgb(argb: Int) {
         viewModelScope.launch {
             prefsRepository.setWidgetTempTextColorArgb(argb)
+            repository.notifyWidgetsChanged()
+        }
+    }
+
+    fun adjustWidgetDataFontDelta(deltaSp: Int) {
+        viewModelScope.launch {
+            prefsRepository.adjustWidgetDataFontDelta(deltaSp)
+            repository.notifyWidgetsChanged()
+        }
+    }
+
+    fun adjustWidgetSliderTransparencyDelta(deltaPct: Int) {
+        viewModelScope.launch {
+            prefsRepository.adjustWidgetSliderTransparencyDelta(deltaPct)
+            repository.notifyWidgetsChanged()
+        }
+    }
+
+    fun setWidgetSliderBackingTone(tone: com.crowinnovations.skypulseweather.domain.BackingTone) {
+        viewModelScope.launch {
+            prefsRepository.setWidgetSliderBackingTone(tone)
             repository.notifyWidgetsChanged()
         }
     }

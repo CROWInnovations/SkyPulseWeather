@@ -54,6 +54,7 @@ import com.crowinnovations.skypulseweather.R
 import com.crowinnovations.skypulseweather.data.local.AppPreferences
 import com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository
 import com.crowinnovations.skypulseweather.data.repository.WeatherRepository
+import com.crowinnovations.skypulseweather.domain.BackingTone
 import com.crowinnovations.skypulseweather.domain.DateDisplayPosition
 import com.crowinnovations.skypulseweather.domain.DisplayFontStyle
 import com.crowinnovations.skypulseweather.domain.DisplayTextColor
@@ -252,15 +253,28 @@ object WeatherWidgetPublisher {
             1f
         }
         val maxVirtualClockSpCap = (74f / hostResizeRatio).safeClamp(44f, 114f)
+        val dataFontDelta = prefs.widgetDataFontDeltaSp.safeClamp(
+            UserPreferencesRepository.MIN_WIDGET_DATA_FONT_DELTA_SP,
+            UserPreferencesRepository.MAX_WIDGET_DATA_FONT_DELTA_SP
+        ).toFloat()
+        val sliderBackingColor = resolveWidgetSliderBackingColor(
+            tone = prefs.widgetSliderBackingTone,
+            transparencyDeltaPct = prefs.widgetSliderTransparencyDeltaPct
+        )
+        val isLightOpaqueSlider = prefs.widgetSliderBackingTone == BackingTone.LIGHTEN &&
+            sliderBackingColor.alpha >= 0.45f
+        val sliderPrimaryTextArgb = if (isLightOpaqueSlider) 0xFF0B1324.toInt() else 0xFFF8FAFC.toInt()
+        val sliderRainTextArgb = if (isLightOpaqueSlider) 0xFF0369A1.toInt() else 0xFF7DD3FC.toInt()
 
-        val hasInlineDate = prefs.dateDisplayPosition == DateDisplayPosition.LEFT_OF_TIME ||
-            prefs.dateDisplayPosition == DateDisplayPosition.RIGHT_OF_TIME
-        val hasBelowDate = prefs.dateDisplayPosition == DateDisplayPosition.BELOW_TIME
+        val hasInlineDate = prefs.widgetDateDisplayPosition == DateDisplayPosition.LEFT_OF_TIME ||
+            prefs.widgetDateDisplayPosition == DateDisplayPosition.RIGHT_OF_TIME
+        val hasBelowDate = prefs.widgetDateDisplayPosition == DateDisplayPosition.BELOW_TIME
         val is24h = android.text.format.DateFormat.is24HourFormat(context)
+        val stripExtraBoostDp = (dataFontDelta * 2.6f * safeFontScale) / hostResizeRatio
         val stripHeightFloat = if (isTall) {
-            (68f / hostResizeRatio).safeClamp(68f, 78f)
+            ((68f / hostResizeRatio).safeClamp(68f, 78f) + stripExtraBoostDp).safeClamp(68f, (hDp * 0.34f).coerceAtLeast(78f))
         } else {
-            (56f / hostResizeRatio).safeClamp(56f, 64f)
+            ((56f / hostResizeRatio).safeClamp(56f, 64f) + stripExtraBoostDp).safeClamp(56f, (hDp * 0.40f).coerceAtLeast(64f))
         }
 
         val maxHeightClockSp = when {
@@ -276,11 +290,11 @@ object WeatherWidgetPublisher {
                 rawMax.safeClamp(12f, (44f / hostResizeRatio).coerceAtLeast(12f))
             }
             else -> {
-                val tenDayOverhead = stripHeightFloat + (if (isTall && model.days.size > 5) 24f else 5f)
-                val alertOverhead = if (isTall && model.alertSummary != null) 24f else 0f
-                val minTelemetryAndHeroH = if (isCompactHeight) 96f else 128f
+                val tenDayOverhead = stripHeightFloat + (if (isTall && model.days.size > 5) 28f else 10f)
+                val alertOverhead = if (isTall && model.alertSummary != null) 28f else 0f
+                val minTelemetryAndHeroH = (if (isCompactHeight) 98f else 130f) + dataFontDelta * 5.5f
                 val budget = (hDp - topPadFloat * 2f - tenDayOverhead - alertOverhead - minTelemetryAndHeroH)
-                    .coerceAtLeast(22f)
+                    .coerceAtLeast(20f)
                 val rawMax = if (hasBelowDate) {
                     (budget - 5f) / (2.04f * safeFontScale)
                 } else {
@@ -301,7 +315,7 @@ object WeatherWidgetPublisher {
             .safeClamp(8.5f, maxVirtualClockSpCap)
         val minAllowedClockSp = if (wDp < 106f) 8.5f else 11f
         val effectiveMaxClockSp = minOf(maxHeightClockSp, maxWidthClockSp).coerceAtLeast(minAllowedClockSp)
-        val desiredVirtualClockSp = prefs.timeFontSizeSp.toFloat() / hostResizeRatio
+        val desiredVirtualClockSp = prefs.widgetTimeFontSizeSp.toFloat() / hostResizeRatio
         val effectiveClockSp = desiredVirtualClockSp.safeClamp(minAllowedClockSp, effectiveMaxClockSp)
         val effectiveDateBelowSp = (effectiveClockSp * 0.72f).safeClamp(8.5f, 48f)
 
@@ -311,21 +325,21 @@ object WeatherWidgetPublisher {
             effectiveClockSp * safeFontScale * 1.22f + 3f
         }
         val clockRowHeightDp = clockRowHeightFloat.dp
-        val clockRemoteViews = if (!prefs.showTimeDisplay) {
+        val clockRemoteViews = if (!prefs.widgetShowTimeDisplay) {
             null
         } else {
             buildStyledTopClockRemoteViews(
                 context = context,
                 fontSizeSp = effectiveClockSp,
                 belowDateFontSizeSp = effectiveDateBelowSp,
-                fontStyle = prefs.timeFontStyle,
-                textColorArgb = prefs.timeTextColorArgb,
-                datePosition = prefs.dateDisplayPosition
+                fontStyle = prefs.widgetTimeFontStyle,
+                textColorArgb = prefs.widgetTimeTextColorArgb,
+                datePosition = prefs.widgetDateDisplayPosition
             )
         }
 
         // Top fraction reserved strictly for the centered Time/Date display so Moon, Sun & clouds sit below it
-        val topReservedFraction = if (prefs.showTimeDisplay) {
+        val topReservedFraction = if (prefs.widgetShowTimeDisplay) {
             ((topPadFloat + clockRowHeightFloat + 2f) / hDp.coerceAtLeast(60f)).safeClamp(0.10f, 0.40f)
         } else {
             0f
@@ -333,10 +347,10 @@ object WeatherWidgetPublisher {
 
         // Use the full open right-hand celestial space down to right above the 10-day header (+ Moon Phase label)
         val maxMoonBottomFraction = if (isLargeForecastMode) {
-            val tenDayH = stripHeightFloat + (if (isTall && model.days.size > 5) 24f else 5f)
-            val alertH = if (isTall && model.alertSummary != null) 24f else 0f
-            val moonPhaseLabelH = if (!model.isDay) 16f else 0f
-            val maxBottomDp = (hDp - topPadFloat - tenDayH - alertH - moonPhaseLabelH - 4f)
+            val tenDayH = stripHeightFloat + (if (isTall && model.days.size > 5) 28f else 10f)
+            val alertH = if (isTall && model.alertSummary != null) 29f else 0f
+            val moonPhaseLabelH = if (!model.isDay) (18f + dataFontDelta * 1.4f) else 0f
+            val maxBottomDp = (hDp - topPadFloat - tenDayH - alertH - moonPhaseLabelH - 6f)
                 .coerceAtLeast(hDp * (topReservedFraction + 0.18f))
             (maxBottomDp / hDp.coerceAtLeast(80f)).safeClamp(topReservedFraction + 0.18f, 0.74f)
         } else {
@@ -420,7 +434,7 @@ object WeatherWidgetPublisher {
             }
         }
 
-        val stripWidthDp = (wDp - 4f).coerceAtLeast(150f)
+        val stripWidthDp = (wDp - 12f).coerceAtLeast(140f)
         val useNativeSwipeStrip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isLargeForecastMode
         val stripContainerRemoteViews = if (useNativeSwipeStrip) {
             createSwipeStripShellRemoteViews(context, stripWidthDp, stripHeightFloat)
@@ -463,6 +477,9 @@ object WeatherWidgetPublisher {
                 days = model.days,
                 stripWidthDp = stripWidthDp,
                 stripHeightDp = stripHeightFloat,
+                dataFontDeltaSp = dataFontDelta,
+                primaryTextArgb = sliderPrimaryTextArgb,
+                rainTextArgb = sliderRainTextArgb,
                 hostResizeRatio = hostResizeRatio,
                 fontScale = safeFontScale,
                 isTall = isTall,
@@ -619,6 +636,30 @@ private fun autoFitWidgetLineSp(
     return scaled.safeClamp(minVirtualSp, safeMax)
 }
 
+internal fun resolveWidgetSliderBackingColor(
+    tone: BackingTone,
+    transparencyDeltaPct: Int
+): Color {
+    val safeDelta = transparencyDeltaPct.safeClamp(
+        UserPreferencesRepository.MIN_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT,
+        UserPreferencesRepository.MAX_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT
+    )
+    return when (tone) {
+        BackingTone.DEFAULT -> {
+            val alpha = (0.34f - (safeDelta / 100f)).safeClamp(0.0f, 0.94f)
+            Color(0xFF0B172A).copy(alpha = alpha)
+        }
+        BackingTone.DARKEN -> {
+            val alpha = (0.56f - (safeDelta / 100f)).safeClamp(0.06f, 0.96f)
+            Color(0xFF030712).copy(alpha = alpha)
+        }
+        BackingTone.LIGHTEN -> {
+            val alpha = (0.34f - (safeDelta / 100f)).safeClamp(0.04f, 0.92f)
+            Color(0xFFEFF6FF).copy(alpha = alpha)
+        }
+    }
+}
+
 @RequiresApi(Build.VERSION_CODES.S)
 private fun attachSwipeableTenDayAdapterToRoot(
     context: Context,
@@ -626,6 +667,9 @@ private fun attachSwipeableTenDayAdapterToRoot(
     days: List<WidgetDayUi>,
     stripWidthDp: Float,
     stripHeightDp: Float,
+    dataFontDeltaSp: Float,
+    primaryTextArgb: Int,
+    rainTextArgb: Int,
     hostResizeRatio: Float,
     fontScale: Float,
     isTall: Boolean,
@@ -634,45 +678,74 @@ private fun attachSwipeableTenDayAdapterToRoot(
 ) {
     val invScale = 1f / SWIPE_LIST_SCALE
     val visibleSlotCount = minOf(5, days.size).coerceAtLeast(1)
-    val colWidthDp = (stripWidthDp / visibleSlotCount).coerceAtLeast(42f)
+    val defaultColWidthDp = (stripWidthDp / visibleSlotCount).coerceAtLeast(42f)
     val rawIconDp = if (isTall) 20f else 17f
     val widestDate = days.maxByOrNull { it.dateDayLabel.length }?.dateDayLabel ?: "12/28 Wed"
     val widestHiLo = days.maxByOrNull { it.highLowLabel.length }?.highLowLabel ?: "99° / 99°"
 
+    val safeRatio = hostResizeRatio.safeClamp(0.65f, 1.25f)
+    val desiredDatePhysicalSp = (if (isTall) 11.4f else 10.6f) + dataFontDeltaSp
+    val desiredHiLoPhysicalSp = (if (isTall) 12.0f else 11.2f) + dataFontDeltaSp
+    val desiredRainPhysicalSp = (if (isTall) 11.2f else 10.2f) + dataFontDeltaSp * 0.85f
+
+    // Dynamically widen swipeable day columns with generous inter-column padding when font size is boosted
+    // so +1sp..+5sp grows visibly without '...' truncation or adjacent high/low labels touching
+    val targetVirtualDateSp = (desiredDatePhysicalSp / safeRatio).safeClamp(9.4f, 22.0f)
+    val targetVirtualHiLoSp = (desiredHiLoPhysicalSp / safeRatio).safeClamp(9.8f, 22.5f)
+    val neededDateW = (WidgetBitmapRenderer.measureTightBoldTextWidthDp(
+        context = context,
+        text = widestDate,
+        virtualFontSizeSp = targetVirtualDateSp,
+        fontScale = fontScale
+    ) * 1.12f) + 12f
+    val neededHiLoW = (WidgetBitmapRenderer.measureTightBoldTextWidthDp(
+        context = context,
+        text = widestHiLo,
+        virtualFontSizeSp = targetVirtualHiLoSp,
+        fontScale = fontScale
+    ) * 1.12f) + 12f
+    val maxSingleColWidthDp = (stripWidthDp / 2.5f).coerceAtLeast(defaultColWidthDp)
+    val colWidthDp = if (dataFontDeltaSp > 0f) {
+        maxOf(defaultColWidthDp, neededDateW, neededHiLoW).safeClamp(defaultColWidthDp, maxSingleColWidthDp)
+    } else {
+        defaultColWidthDp
+    }
+
+    val safeTextFitColW = (colWidthDp - if (dataFontDeltaSp > 0f) 9f else 5f).coerceAtLeast(32f)
     var baseDateSp = autoFitWidgetLineSp(
         context = context,
         text = widestDate,
-        availWidthDp = colWidthDp - 5f,
-        desiredPhysicalSp = if (isTall) 11.4f else 10.6f,
+        availWidthDp = safeTextFitColW,
+        desiredPhysicalSp = desiredDatePhysicalSp,
         minVirtualSp = 9.4f,
-        maxVirtualSp = if (isTall) 14.0f else 12.8f,
+        maxVirtualSp = (if (isTall) 14.0f else 12.8f) + (dataFontDeltaSp / safeRatio),
         hostResizeRatio = hostResizeRatio,
         fontScale = fontScale
     )
     var baseHiLoSp = autoFitWidgetLineSp(
         context = context,
         text = widestHiLo,
-        availWidthDp = colWidthDp - 5f,
-        desiredPhysicalSp = if (isTall) 12.0f else 11.2f,
+        availWidthDp = safeTextFitColW,
+        desiredPhysicalSp = desiredHiLoPhysicalSp,
         minVirtualSp = 9.8f,
-        maxVirtualSp = if (isTall) 14.6f else 13.4f,
+        maxVirtualSp = (if (isTall) 14.6f else 13.4f) + (dataFontDeltaSp / safeRatio),
         hostResizeRatio = hostResizeRatio,
         fontScale = fontScale
     )
     val baseRainPctSp = autoFitWidgetLineSp(
         context = context,
         text = "100%",
-        availWidthDp = (colWidthDp - rawIconDp - 3f).coerceAtLeast(22f),
-        desiredPhysicalSp = if (isTall) 11.2f else 10.2f,
+        availWidthDp = (colWidthDp - rawIconDp - 2.5f).coerceAtLeast(22f),
+        desiredPhysicalSp = desiredRainPhysicalSp,
         minVirtualSp = 9.0f,
-        maxVirtualSp = if (isTall) 13.8f else 12.4f,
+        maxVirtualSp = (if (isTall) 13.8f else 12.4f) + (dataFontDeltaSp / safeRatio),
         hostResizeRatio = hostResizeRatio,
         fontScale = fontScale
     )
 
     // Guarantee vertical height safety across all OS fontScale settings (0.85x..1.45x)
     val availTextVerticalDp = (stripHeightDp - rawIconDp - 4f).coerceAtLeast(22f)
-    val maxCombinedSp = (availTextVerticalDp / (fontScale * 1.20f)).coerceAtLeast(18f)
+    val maxCombinedSp = (availTextVerticalDp / (fontScale * 1.18f)).coerceAtLeast(18f)
     val combinedSp = baseDateSp + baseHiLoSp
     if (combinedSp > maxCombinedSp) {
         val vScale = (maxCombinedSp / combinedSp).safeClamp(0.65f, 1f)
@@ -700,6 +773,7 @@ private fun attachSwipeableTenDayAdapterToRoot(
 
             setTextViewText(R.id.day_item_date, day.dateDayLabel)
             setTextViewTextSize(R.id.day_item_date, TypedValue.COMPLEX_UNIT_SP, dateSp)
+            setTextColor(R.id.day_item_date, primaryTextArgb)
 
             setImageViewBitmap(R.id.day_item_icon, day.glyph)
             setViewLayoutWidth(R.id.day_item_icon, iconSizeDp, TypedValue.COMPLEX_UNIT_DIP)
@@ -709,12 +783,14 @@ private fun attachSwipeableTenDayAdapterToRoot(
                 setViewVisibility(R.id.day_item_rain_pct, View.VISIBLE)
                 setTextViewText(R.id.day_item_rain_pct, "${day.precipPercent}%")
                 setTextViewTextSize(R.id.day_item_rain_pct, TypedValue.COMPLEX_UNIT_SP, rainPctSp)
+                setTextColor(R.id.day_item_rain_pct, rainTextArgb)
             } else {
                 setViewVisibility(R.id.day_item_rain_pct, View.GONE)
             }
 
             setTextViewText(R.id.day_item_hilo, day.highLowLabel)
             setTextViewTextSize(R.id.day_item_hilo, TypedValue.COMPLEX_UNIT_SP, hiLoSp)
+            setTextColor(R.id.day_item_hilo, primaryTextArgb)
         }
         builder.addItem(idx.toLong(), itemRv)
     }
@@ -896,6 +972,30 @@ private fun WidgetCardSurface(
 
     val tempScaleRatio = prefs.widgetTempFontSizeSp.toFloat() /
         UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_SP.toFloat()
+    val dataFontDelta = prefs.widgetDataFontDeltaSp.safeClamp(
+        UserPreferencesRepository.MIN_WIDGET_DATA_FONT_DELTA_SP,
+        UserPreferencesRepository.MAX_WIDGET_DATA_FONT_DELTA_SP
+    ).toFloat()
+    val safeHostRatio = hostResizeRatio.safeClamp(0.65f, 1.25f)
+    val virtualDeltaCapBoost = dataFontDelta / safeHostRatio
+    val sliderBackingColor = resolveWidgetSliderBackingColor(
+        tone = prefs.widgetSliderBackingTone,
+        transparencyDeltaPct = prefs.widgetSliderTransparencyDeltaPct
+    )
+    val isLightOpaqueSlider = prefs.widgetSliderBackingTone == BackingTone.LIGHTEN &&
+        sliderBackingColor.alpha >= 0.45f
+    val sliderPrimaryColor = ColorProvider(
+        if (isLightOpaqueSlider) Color(0xFF0B1324) else Color(0xFFF8FAFC)
+    )
+    val sliderSecondaryColor = ColorProvider(
+        if (isLightOpaqueSlider) Color(0xFF1E293B) else Color(0xFFDCE7F5)
+    )
+    val sliderRainTint = ColorProvider(
+        if (isLightOpaqueSlider) Color(0xFF0369A1) else Color(0xFF7DD3FC)
+    )
+    val sliderDividerColor = ColorProvider(
+        if (isLightOpaqueSlider) Color(0x380F172A) else Color(0x42FFFFFF)
+    )
 
     val rootBoxModifier = if (swipeStripShellRemoteViews != null) {
         GlanceModifier
@@ -988,9 +1088,9 @@ private fun WidgetCardSurface(
                             context = context,
                             text = model.highLowCompact,
                             availWidthDp = (widthDp - 10f).coerceAtLeast(32f),
-                            desiredPhysicalSp = 10.8f,
+                            desiredPhysicalSp = 10.8f + dataFontDelta * 0.75f,
                             minVirtualSp = 9.8f,
-                            maxVirtualSp = 13.4f,
+                            maxVirtualSp = 13.4f + virtualDeltaCapBoost * 0.75f,
                             hostResizeRatio = hostResizeRatio,
                             fontScale = fontScale
                         ).sp
@@ -1052,9 +1152,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = chosenStripSub,
                     availWidthDp = stripAvailCityW,
-                    desiredPhysicalSp = 11.4f,
+                    desiredPhysicalSp = 11.4f + dataFontDelta,
                     minVirtualSp = 10.4f,
-                    maxVirtualSp = 14.4f,
+                    maxVirtualSp = 14.4f + virtualDeltaCapBoost,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1131,9 +1231,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = sqHlLineText,
                     availWidthDp = sqFullRowW,
-                    desiredPhysicalSp = 11.8f,
+                    desiredPhysicalSp = 11.8f + dataFontDelta,
                     minVirtualSp = 10.6f,
-                    maxVirtualSp = 14.8f,
+                    maxVirtualSp = 14.8f + virtualDeltaCapBoost,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1141,9 +1241,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = sqCondHumText,
                     availWidthDp = sqFullRowW,
-                    desiredPhysicalSp = 11.4f,
+                    desiredPhysicalSp = 11.4f + dataFontDelta,
                     minVirtualSp = 10.2f,
-                    maxVirtualSp = 14.2f,
+                    maxVirtualSp = 14.2f + virtualDeltaCapBoost,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1151,9 +1251,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = model.windAndUvLine,
                     availWidthDp = sqFullRowW,
-                    desiredPhysicalSp = 11.4f,
+                    desiredPhysicalSp = 11.4f + dataFontDelta,
                     minVirtualSp = 10.2f,
-                    maxVirtualSp = 14.2f,
+                    maxVirtualSp = 14.2f + virtualDeltaCapBoost,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1331,17 +1431,24 @@ private fun WidgetCardSurface(
                     .safeClamp(11.0f, maxCitySpCap)
                 val locNameSp = locNameSpFloat.sp
 
+                val stripExtraBoostDp = (dataFontDelta * 2.6f * fontScale) / safeHostRatio
                 val stripHeightFloat = if (isTall) {
-                    (68f / hostResizeRatio).safeClamp(68f, 78f)
+                    ((68f / hostResizeRatio).safeClamp(68f, 78f) + stripExtraBoostDp)
+                        .safeClamp(68f, (heightDp * 0.34f).coerceAtLeast(78f))
                 } else {
-                    (56f / hostResizeRatio).safeClamp(56f, 64f)
+                    ((56f / hostResizeRatio).safeClamp(56f, 64f) + stripExtraBoostDp)
+                        .safeClamp(56f, (heightDp * 0.40f).coerceAtLeast(64f))
                 }
                 val stripSectionOverhead = if (showTenDayStrip) {
-                    stripHeightFloat + (if (isTall && model.days.size > 5) 23f else 4f)
+                    stripHeightFloat + (if (isTall && model.days.size > 5) 28f else 10f)
                 } else {
                     0f
                 }
-                val alertOverhead = if (isTall && model.alertSummary != null) 24f else 0f
+                val alertOverhead = if (isTall && model.alertSummary != null) {
+                    28f + dataFontDelta * 0.9f
+                } else {
+                    0f
+                }
                 val showWindLine = model.windAndUvLine.isNotEmpty() && (isTall || effectiveH >= 152f)
                 val stripWidthFloat = (widthDp - 20f).coerceAtLeast(150f)
                 val hasMoonPhaseCol = hasNightMoonStage
@@ -1362,14 +1469,14 @@ private fun WidgetCardSurface(
                 } else {
                     "${model.conditionOnly} · ${model.humidityLine}"
                 }
-                val safeTelemetryAvailW = (telemetryWidthFloat - 10f).coerceAtLeast(72f)
+                val safeTelemetryAvailW = (telemetryWidthFloat - 6f).coerceAtLeast(72f)
                 val hlPrimarySpFloat = autoFitWidgetLineSp(
                     context = context,
                     text = hlPrimaryLineText,
                     availWidthDp = safeTelemetryAvailW,
-                    desiredPhysicalSp = if (isTall) 13.4f else 12.2f,
+                    desiredPhysicalSp = (if (isTall) 13.4f else 12.2f) + dataFontDelta,
                     minVirtualSp = 10.4f,
-                    maxVirtualSp = if (isTall) 16.8f else 15.2f,
+                    maxVirtualSp = (if (isTall) 16.8f else 15.2f) + virtualDeltaCapBoost,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1377,9 +1484,9 @@ private fun WidgetCardSurface(
                     context = context,
                     text = condHumidityLineText,
                     availWidthDp = safeTelemetryAvailW,
-                    desiredPhysicalSp = if (isTall) 12.8f else 11.6f,
+                    desiredPhysicalSp = (if (isTall) 12.8f else 11.6f) + dataFontDelta,
                     minVirtualSp = 9.8f,
-                    maxVirtualSp = if (isTall) 15.8f else 14.4f,
+                    maxVirtualSp = (if (isTall) 15.8f else 14.4f) + virtualDeltaCapBoost,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1387,21 +1494,21 @@ private fun WidgetCardSurface(
                     context = context,
                     text = model.windAndUvLine,
                     availWidthDp = safeTelemetryAvailW,
-                    desiredPhysicalSp = if (isTall) 12.8f else 11.8f,
+                    desiredPhysicalSp = (if (isTall) 12.8f else 11.8f) + dataFontDelta,
                     minVirtualSp = 10.0f,
-                    maxVirtualSp = if (isTall) 15.8f else 14.6f,
+                    maxVirtualSp = (if (isTall) 15.8f else 14.6f) + virtualDeltaCapBoost,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
 
                 val lowerTelemetryOverhead = ((hlPrimarySpFloat + condHumiditySpFloat +
-                    (if (showWindLine) windUvSpFloat else 0f)) * fontScale * 1.25f) + 4f
-                val cityHeaderOverhead = if (isCompactHeight) 20f else 27f
+                    (if (showWindLine) windUvSpFloat else 0f)) * fontScale * 1.38f) + 9f
+                val cityHeaderOverhead = (locNameSpFloat * fontScale * 1.34f) + 6f
 
-                val stageAvailableHeightDp = (heightDp - topPadFloat - 2f - clockOverhead -
+                val stageAvailableHeightDp = (heightDp - topPadFloat - 4f - clockOverhead -
                     stripSectionOverhead - alertOverhead - 2f)
-                    .coerceAtLeast(66f)
-                val maxHeroTempHeightDp = (stageAvailableHeightDp - cityHeaderOverhead - lowerTelemetryOverhead - 3f)
+                    .coerceAtLeast(64f)
+                val maxHeroTempHeightDp = (stageAvailableHeightDp - cityHeaderOverhead - lowerTelemetryOverhead - 4f)
                     .coerceAtLeast(22f)
 
                 val heroTempBmp = WidgetBitmapRenderer.renderStyledTemperatureBitmap(
@@ -1437,9 +1544,17 @@ private fun WidgetCardSurface(
                 }
 
                 // Moon Phase centered directly under the large 3D Moon in the right-hand open space
-                val moonPhaseSpFloat = (rightSpaceFloat / (9.6f * fontScale))
-                    .safeClamp(if (isCompactHeight) 9.8f else 11.0f, if (isTall) 13.4f else 12.2f)
-                val moonPhaseHeightFloat = moonPhaseSpFloat * fontScale * 1.32f + 2f
+                val moonPhaseSpFloat = autoFitWidgetLineSp(
+                    context = context,
+                    text = model.moonPhase.phaseName,
+                    availWidthDp = (rightSpaceFloat - 4f).coerceAtLeast(72f),
+                    desiredPhysicalSp = (if (isTall) 11.8f else 10.8f) + dataFontDelta * 0.75f,
+                    minVirtualSp = if (isCompactHeight) 9.8f else 11.0f,
+                    maxVirtualSp = (if (isTall) 13.4f else 12.2f) + virtualDeltaCapBoost * 0.75f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                )
+                val moonPhaseHeightFloat = moonPhaseSpFloat * fontScale * 1.38f + 5f
                 val rawMoonBottomDp = WidgetBitmapRenderer.computeMoonBottomDp(
                     widthDp = widthDp,
                     heightDp = heightDp,
@@ -1448,7 +1563,7 @@ private fun WidgetCardSurface(
                 )
                 val desiredMoonPhaseTop = rawMoonBottomDp - topPadFloat - clockOverhead + 1.5f
                 val moonPhaseTopSpacerDp = desiredMoonPhaseTop
-                    .safeClamp(8f, (stageAvailableHeightDp - moonPhaseHeightFloat - 1f).coerceAtLeast(8f)).dp
+                    .safeClamp(6f, (stageAvailableHeightDp - moonPhaseHeightFloat - 6f).coerceAtLeast(6f)).dp
 
                 val moonPhaseRemoteViews = if (hasNightMoonStage) {
                     RemoteViews(context.packageName, R.layout.widget_celestial_labels).apply {
@@ -1465,14 +1580,19 @@ private fun WidgetCardSurface(
                     null
                 }
 
-                val visibleCount = minOf(5, model.days.size)
+                val fallbackSlots = if (dataFontDelta >= 3f && stripWidthFloat < 340f) {
+                    minOf(4, model.days.size)
+                } else {
+                    minOf(5, model.days.size)
+                }
+                val visibleCount = fallbackSlots.coerceAtLeast(1)
                 val maxOffset = (model.days.size - visibleCount).coerceAtLeast(0)
                 val safeOffset = dayOffset.safeClamp(0, maxOffset)
                 val visibleDays = model.days.drop(safeOffset).take(visibleCount)
                 val canScrollLeft = safeOffset > 0
                 val canScrollRight = safeOffset < maxOffset
-                val nextLeftOffset = (safeOffset - 5).coerceAtLeast(0)
-                val nextRightOffset = (safeOffset + 5).coerceAtMost(maxOffset)
+                val nextLeftOffset = (safeOffset - visibleCount).coerceAtLeast(0)
+                val nextRightOffset = (safeOffset + visibleCount).coerceAtMost(maxOffset)
 
                 val useNativeSwipeStrip = swipeStripShellRemoteViews != null
                 val navControlWidth = if (!useNativeSwipeStrip && maxOffset > 0) 24f else 0f
@@ -1483,39 +1603,48 @@ private fun WidgetCardSurface(
                 val fallbackDateSp = autoFitWidgetLineSp(
                     context = context,
                     text = widestDateLabel,
-                    availWidthDp = colWidthDp - 5f,
-                    desiredPhysicalSp = if (isTall) 11.4f else 10.6f,
+                    availWidthDp = colWidthDp - 3f,
+                    desiredPhysicalSp = (if (isTall) 11.4f else 10.6f) + dataFontDelta,
                     minVirtualSp = 9.4f,
-                    maxVirtualSp = if (isTall) 14.0f else 12.8f,
+                    maxVirtualSp = (if (isTall) 14.0f else 12.8f) + virtualDeltaCapBoost,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
                 val dayHiLoSp = autoFitWidgetLineSp(
                     context = context,
                     text = widestHiLoLabel,
-                    availWidthDp = colWidthDp - 5f,
-                    desiredPhysicalSp = if (isTall) 12.0f else 11.2f,
+                    availWidthDp = colWidthDp - 3f,
+                    desiredPhysicalSp = (if (isTall) 12.0f else 11.2f) + dataFontDelta,
                     minVirtualSp = 9.8f,
-                    maxVirtualSp = if (isTall) 14.6f else 13.4f,
+                    maxVirtualSp = (if (isTall) 14.6f else 13.4f) + virtualDeltaCapBoost,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
                 val dayRainPctSp = autoFitWidgetLineSp(
                     context = context,
                     text = "100%",
-                    availWidthDp = (colWidthDp - (if (isTall) 20f else 17f) - 3f).coerceAtLeast(22f),
-                    desiredPhysicalSp = if (isTall) 11.2f else 10.2f,
+                    availWidthDp = (colWidthDp - (if (isTall) 20f else 17f) - 2.5f).coerceAtLeast(22f),
+                    desiredPhysicalSp = (if (isTall) 11.2f else 10.2f) + dataFontDelta * 0.85f,
                     minVirtualSp = 9.0f,
-                    maxVirtualSp = if (isTall) 13.8f else 12.4f,
+                    maxVirtualSp = (if (isTall) 13.8f else 12.4f) + virtualDeltaCapBoost * 0.85f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
-                val tenDayHeaderSp = (11.2f / hostResizeRatio).safeClamp(11.0f, 13.6f).sp
+                val tenDayHeaderSp = autoFitWidgetLineSp(
+                    context = context,
+                    text = "10-DAY FORECAST · SWIPE ⇄   Next 5 ›",
+                    availWidthDp = (stripWidthFloat - 16f).coerceAtLeast(120f),
+                    desiredPhysicalSp = 11.2f + dataFontDelta * 0.65f,
+                    minVirtualSp = 10.4f,
+                    maxVirtualSp = 13.6f + virtualDeltaCapBoost * 0.65f,
+                    hostResizeRatio = hostResizeRatio,
+                    fontScale = fontScale
+                ).sp
 
                 Column(
                     modifier = GlanceModifier
                         .fillMaxSize()
-                        .padding(top = topPadFloat.dp, bottom = 2.dp)
+                        .padding(top = topPadFloat.dp, bottom = 4.dp)
                 ) {
                     // Upper clickable weather stage (tapping opens full-screen app; bottom 10-day slider stays pure swipe)
                     Column(
@@ -1767,7 +1896,7 @@ private fun WidgetCardSurface(
                                     maxLines = 1,
                                     style = TextStyle(
                                         color = alertTint,
-                                        fontSize = 11.sp,
+                                        fontSize = (11f + dataFontDelta * 0.65f).sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                 )
@@ -1775,184 +1904,201 @@ private fun WidgetCardSurface(
                         }
                     }
 
-                    // 4. Bottom 10-Day Forecast Strip (full edge-to-edge width & dedicated pure swipe zone!)
+                    // 4. Bottom 10-Day Forecast Strip with customizable Backing Tone & Transparency
                     if (showTenDayStrip) {
-                        Spacer(modifier = GlanceModifier.height(1.dp))
-                        Column(modifier = GlanceModifier.fillMaxWidth()) {
-                            if (isTall && model.days.size > 5) {
-                                val toggleScrollAction = actionSendBroadcast(
-                                    createScrollForecastBroadcastIntent(
-                                        context,
-                                        if (canScrollRight) nextRightOffset else nextLeftOffset
-                                    )
-                                )
-                                Row(
-                                    modifier = GlanceModifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 10.dp)
-                                        .clickable(toggleScrollAction),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = if (useNativeSwipeStrip) {
-                                            "10-DAY FORECAST · SWIPE ⇄"
-                                        } else {
-                                            "10-DAY FORECAST · DAYS ${safeOffset + 1}–${safeOffset + visibleDays.size}"
-                                        },
-                                        maxLines = 1,
-                                        modifier = GlanceModifier.defaultWeight(),
-                                        style = TextStyle(
-                                            color = secondaryColor,
-                                            fontSize = tenDayHeaderSp,
-                                            fontWeight = FontWeight.Bold
+                        Spacer(modifier = GlanceModifier.height(2.dp))
+                        val sliderBackingModifier = if (sliderBackingColor.alpha > 0.005f) {
+                            GlanceModifier
+                                .fillMaxWidth()
+                                .cornerRadius(16.dp)
+                                .background(ColorProvider(sliderBackingColor))
+                                .padding(top = 3.dp, bottom = 2.dp)
+                        } else {
+                            GlanceModifier
+                                .fillMaxWidth()
+                                .padding(top = 1.dp)
+                        }
+                        Box(
+                            modifier = GlanceModifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp)
+                        ) {
+                            Column(modifier = sliderBackingModifier) {
+                                if (isTall && model.days.size > 5) {
+                                    val toggleScrollAction = actionSendBroadcast(
+                                        createScrollForecastBroadcastIntent(
+                                            context,
+                                            if (canScrollRight) nextRightOffset else nextLeftOffset
                                         )
                                     )
-                                    Text(
-                                        text = if (canScrollRight) "Next 5 ›" else "‹ First 5",
-                                        maxLines = 1,
+                                    Row(
                                         modifier = GlanceModifier
-                                            .cornerRadius(8.dp)
-                                            .background(pillBgColor)
-                                            .clickable(toggleScrollAction)
-                                            .padding(horizontal = 7.dp, vertical = 2.dp),
-                                        style = TextStyle(
-                                            color = rainTint,
-                                            fontSize = tenDayHeaderSp,
-                                            fontWeight = FontWeight.Bold
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 8.dp)
+                                            .clickable(toggleScrollAction),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = if (useNativeSwipeStrip) {
+                                                "10-DAY FORECAST · SWIPE ⇄"
+                                            } else {
+                                                "10-DAY FORECAST · DAYS ${safeOffset + 1}–${safeOffset + visibleDays.size}"
+                                            },
+                                            maxLines = 1,
+                                            modifier = GlanceModifier.defaultWeight(),
+                                            style = TextStyle(
+                                                color = sliderSecondaryColor,
+                                                fontSize = tenDayHeaderSp,
+                                                fontWeight = FontWeight.Bold
+                                            )
                                         )
-                                    )
-                                }
-                                Spacer(modifier = GlanceModifier.height(1.dp))
-                            }
-
-                            Box(
-                                modifier = GlanceModifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 10.dp)
-                                    .height(1.dp)
-                                    .background(dividerColor)
-                            ) {}
-
-                            if (swipeStripShellRemoteViews != null) {
-                                AndroidRemoteViews(
-                                    remoteViews = swipeStripShellRemoteViews,
-                                    modifier = GlanceModifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 2.dp)
-                                        .height(stripHeightFloat.dp)
-                                )
-                            } else {
-                                Spacer(modifier = GlanceModifier.height(2.dp))
-                                Row(
-                                    modifier = GlanceModifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    if (canScrollLeft) {
-                                        Box(
-                                            contentAlignment = Alignment.Center,
+                                        Text(
+                                            text = if (canScrollRight) "Next 5 ›" else "‹ First 5",
+                                            maxLines = 1,
                                             modifier = GlanceModifier
-                                                .width(22.dp)
-                                                .height(if (isTall) 50.dp else 40.dp)
                                                 .cornerRadius(8.dp)
                                                 .background(pillBgColor)
-                                                .clickable(
-                                                    actionSendBroadcast(
-                                                        createScrollForecastBroadcastIntent(context, nextLeftOffset)
-                                                    )
-                                                )
-                                        ) {
-                                            Text(
-                                                text = "‹",
-                                                maxLines = 1,
-                                                style = TextStyle(
-                                                    color = rainTint,
-                                                    fontSize = 17.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    textAlign = TextAlign.Center
-                                                )
+                                                .clickable(toggleScrollAction)
+                                                .padding(horizontal = 7.dp, vertical = 2.dp),
+                                            style = TextStyle(
+                                                color = ColorProvider(Color(0xFF7DD3FC)),
+                                                fontSize = tenDayHeaderSp,
+                                                fontWeight = FontWeight.Bold
                                             )
-                                        }
-                                        Spacer(modifier = GlanceModifier.width(2.dp))
+                                        )
                                     }
+                                    Spacer(modifier = GlanceModifier.height(2.dp))
+                                }
 
-                                    visibleDays.forEach { day ->
-                                        Column(
-                                            modifier = GlanceModifier.defaultWeight(),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            Text(
-                                                text = day.dateDayLabel,
-                                                maxLines = 1,
-                                                style = TextStyle(
-                                                    color = primaryColor,
-                                                    fontSize = fallbackDateSp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            )
-                                            Spacer(modifier = GlanceModifier.height(if (isCompactHeight) 1.dp else 2.dp))
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Image(
-                                                    provider = ImageProvider(day.glyph),
-                                                    contentDescription = day.dateDayLabel,
-                                                    modifier = GlanceModifier.size(if (isTall) 20.dp else 17.dp)
-                                                )
-                                                if (day.showRainPercentBesideCloud) {
-                                                    Spacer(modifier = GlanceModifier.width(2.dp))
-                                                    Text(
-                                                        text = "${day.precipPercent}%",
-                                                        maxLines = 1,
-                                                        style = TextStyle(
-                                                            color = rainTint,
-                                                            fontSize = dayRainPctSp,
-                                                            fontWeight = FontWeight.Bold
+                                Box(
+                                    modifier = GlanceModifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp)
+                                        .height(1.dp)
+                                        .background(sliderDividerColor)
+                                ) {}
+
+                                if (swipeStripShellRemoteViews != null) {
+                                    AndroidRemoteViews(
+                                        remoteViews = swipeStripShellRemoteViews,
+                                        modifier = GlanceModifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 2.dp)
+                                            .height(stripHeightFloat.dp)
+                                    )
+                                } else {
+                                    Spacer(modifier = GlanceModifier.height(2.dp))
+                                    Row(
+                                        modifier = GlanceModifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        if (canScrollLeft) {
+                                            Box(
+                                                contentAlignment = Alignment.Center,
+                                                modifier = GlanceModifier
+                                                    .width(22.dp)
+                                                    .height(if (isTall) 50.dp else 40.dp)
+                                                    .cornerRadius(8.dp)
+                                                    .background(pillBgColor)
+                                                    .clickable(
+                                                        actionSendBroadcast(
+                                                            createScrollForecastBroadcastIntent(context, nextLeftOffset)
                                                         )
                                                     )
-                                                }
-                                            }
-                                            Spacer(modifier = GlanceModifier.height(if (isCompactHeight) 1.dp else 2.dp))
-                                            Text(
-                                                text = day.highLowLabel,
-                                                maxLines = 1,
-                                                style = TextStyle(
-                                                    color = primaryColor,
-                                                    fontSize = dayHiLoSp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            )
-                                        }
-                                    }
-
-                                    if (canScrollRight) {
-                                        Spacer(modifier = GlanceModifier.width(2.dp))
-                                        Box(
-                                            contentAlignment = Alignment.Center,
-                                            modifier = GlanceModifier
-                                                .width(22.dp)
-                                                .height(if (isTall) 50.dp else 40.dp)
-                                                .cornerRadius(8.dp)
-                                                .background(pillBgColor)
-                                                .clickable(
-                                                    actionSendBroadcast(
-                                                        createScrollForecastBroadcastIntent(context, nextRightOffset)
+                                            ) {
+                                                Text(
+                                                    text = "‹",
+                                                    maxLines = 1,
+                                                    style = TextStyle(
+                                                        color = ColorProvider(Color(0xFF7DD3FC)),
+                                                        fontSize = 17.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        textAlign = TextAlign.Center
                                                     )
                                                 )
-                                        ) {
-                                            Text(
-                                                text = "›",
-                                                maxLines = 1,
-                                                style = TextStyle(
-                                                    color = rainTint,
-                                                    fontSize = 17.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    textAlign = TextAlign.Center
+                                            }
+                                            Spacer(modifier = GlanceModifier.width(2.dp))
+                                        }
+
+                                        visibleDays.forEach { day ->
+                                            Column(
+                                                modifier = GlanceModifier.defaultWeight(),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Text(
+                                                    text = day.dateDayLabel,
+                                                    maxLines = 1,
+                                                    style = TextStyle(
+                                                        color = sliderPrimaryColor,
+                                                        fontSize = fallbackDateSp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        textAlign = TextAlign.Center
+                                                    )
                                                 )
-                                            )
+                                                Spacer(modifier = GlanceModifier.height(if (isCompactHeight) 1.dp else 2.dp))
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Image(
+                                                        provider = ImageProvider(day.glyph),
+                                                        contentDescription = day.dateDayLabel,
+                                                        modifier = GlanceModifier.size(if (isTall) 20.dp else 17.dp)
+                                                    )
+                                                    if (day.showRainPercentBesideCloud) {
+                                                        Spacer(modifier = GlanceModifier.width(2.dp))
+                                                        Text(
+                                                            text = "${day.precipPercent}%",
+                                                            maxLines = 1,
+                                                            style = TextStyle(
+                                                                color = sliderRainTint,
+                                                                fontSize = dayRainPctSp,
+                                                                fontWeight = FontWeight.Bold
+                                                            )
+                                                        )
+                                                    }
+                                                }
+                                                Spacer(modifier = GlanceModifier.height(if (isCompactHeight) 1.dp else 2.dp))
+                                                Text(
+                                                    text = day.highLowLabel,
+                                                    maxLines = 1,
+                                                    style = TextStyle(
+                                                        color = sliderPrimaryColor,
+                                                        fontSize = dayHiLoSp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                )
+                                            }
+                                        }
+
+                                        if (canScrollRight) {
+                                            Spacer(modifier = GlanceModifier.width(2.dp))
+                                            Box(
+                                                contentAlignment = Alignment.Center,
+                                                modifier = GlanceModifier
+                                                    .width(22.dp)
+                                                    .height(if (isTall) 50.dp else 40.dp)
+                                                    .cornerRadius(8.dp)
+                                                    .background(pillBgColor)
+                                                    .clickable(
+                                                        actionSendBroadcast(
+                                                            createScrollForecastBroadcastIntent(context, nextRightOffset)
+                                                        )
+                                                    )
+                                            ) {
+                                                Text(
+                                                    text = "›",
+                                                    maxLines = 1,
+                                                    style = TextStyle(
+                                                        color = ColorProvider(Color(0xFF7DD3FC)),
+                                                        fontSize = 17.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                )
+                                            }
                                         }
                                     }
                                 }
