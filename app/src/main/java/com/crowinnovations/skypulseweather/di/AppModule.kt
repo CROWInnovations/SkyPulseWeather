@@ -61,9 +61,10 @@ object AppModule {
                 if (!url.isHttps || !InputSecurityValidator.isSafePublicHost(url.host)) {
                     throw IOException("Blocked insecure or non-public network target.")
                 }
+                val acceptHeader = original.header("Accept") ?: "application/json, application/geo+json"
                 val req = original.newBuilder()
                     .header("User-Agent", "SkyPulseWeather/${BuildConfig.VERSION_NAME} (+https://crowinnovations.com)")
-                    .header("Accept", "application/json, application/geo+json")
+                    .header("Accept", acceptHeader)
                     .build()
                 chain.proceed(req)
             }

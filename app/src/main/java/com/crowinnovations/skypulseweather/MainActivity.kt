@@ -39,10 +39,13 @@ class MainActivity : ComponentActivity() {
             SkyPulseTheme(themeMode = uiState.preferences.themeMode) {
                 WeatherScreen(
                     uiState = uiState,
+                    radarRepository = viewModel.radarMapRepository,
                     onSelectLocation = viewModel::selectLocation,
                     onRefresh = { viewModel.refreshWeather(force = true, updateGps = true) },
                     onOpenLocations = viewModel::openLocationsSheet,
                     onCloseLocations = viewModel::closeLocationsSheet,
+                    onOpenRadar = viewModel::openRadarMap,
+                    onCloseRadar = viewModel::closeRadarMap,
                     onOpenSettings = viewModel::openSettingsDialog,
                     onCloseSettings = viewModel::closeSettingsDialog,
                     onSearchQueryChange = viewModel::onSearchQueryChange,

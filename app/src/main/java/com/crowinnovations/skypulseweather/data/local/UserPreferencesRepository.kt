@@ -41,33 +41,33 @@ data class AppPreferences(
     val activeLocationId: Long = -1L,
     val gatewayBaseUrl: String = "",
     // Full Screen Display settings
-    val fullScreenShowTimeDisplay: Boolean = false,
-    val fullScreenDateDisplayPosition: DateDisplayPosition = DateDisplayPosition.OFF,
+    val fullScreenShowTimeDisplay: Boolean = UserPreferencesRepository.DEFAULT_FULL_SCREEN_SHOW_TIME,
+    val fullScreenDateDisplayPosition: DateDisplayPosition = UserPreferencesRepository.DEFAULT_FULL_SCREEN_DATE_POSITION,
     val fullScreenTimeFontSizeSp: Float = UserPreferencesRepository.DEFAULT_TIME_FONT_SP,
     val fullScreenTimeFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
     val fullScreenTimeTextColorArgb: Int = DisplayTextColor.WHITE.argb,
     val fullScreenTempFontSizeSp: Float = UserPreferencesRepository.DEFAULT_FULL_SCREEN_TEMP_FONT_SP,
-    val fullScreenTempFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
+    val fullScreenTempFontStyle: DisplayFontStyle = UserPreferencesRepository.DEFAULT_FULL_SCREEN_TEMP_FONT_STYLE,
     val fullScreenTempTextColorArgb: Int = DisplayTextColor.WHITE.argb,
     val forecastTransparencyDeltaPct: Int = UserPreferencesRepository.DEFAULT_FORECAST_TRANSPARENCY_DELTA_PCT,
     val forecastBackingTone: BackingTone = BackingTone.DEFAULT,
     val forecastFontSizeSp: Float = UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP,
     // Widget Display settings
-    val widgetShowTimeDisplay: Boolean = false,
-    val widgetDateDisplayPosition: DateDisplayPosition = DateDisplayPosition.OFF,
-    val widgetTimeFontSizeSp: Float = UserPreferencesRepository.DEFAULT_TIME_FONT_SP,
-    val widgetTimeFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
-    val widgetTimeTextColorArgb: Int = DisplayTextColor.WHITE.argb,
+    val widgetShowTimeDisplay: Boolean = UserPreferencesRepository.DEFAULT_WIDGET_SHOW_TIME,
+    val widgetDateDisplayPosition: DateDisplayPosition = UserPreferencesRepository.DEFAULT_WIDGET_DATE_POSITION,
+    val widgetTimeFontSizeSp: Float = UserPreferencesRepository.DEFAULT_WIDGET_TIME_FONT_SP,
+    val widgetTimeFontStyle: DisplayFontStyle = UserPreferencesRepository.DEFAULT_WIDGET_TIME_FONT_STYLE,
+    val widgetTimeTextColorArgb: Int = UserPreferencesRepository.DEFAULT_WIDGET_TIME_COLOR_ARGB,
     val widgetTempFontSizeSp: Float = UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_SP,
-    val widgetTempFontStyle: DisplayFontStyle = DisplayFontStyle.DEFAULT,
-    val widgetTempTextColorArgb: Int = DisplayTextColor.WHITE.argb,
+    val widgetTempFontStyle: DisplayFontStyle = UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_STYLE,
+    val widgetTempTextColorArgb: Int = UserPreferencesRepository.DEFAULT_WIDGET_TEMP_COLOR_ARGB,
     val widgetDetailsFontSizeSp: Float = UserPreferencesRepository.DEFAULT_WIDGET_DETAILS_FONT_SP,
     val widgetDetailsTransparencyDeltaPct: Int = UserPreferencesRepository.DEFAULT_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT,
     val widgetDetailsBackingTone: BackingTone = BackingTone.DEFAULT,
     val widgetForecastDayOffset: Int = 0,
     val widgetDataFontSizeSp: Float = UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP,
     val widgetSliderTransparencyDeltaPct: Int = UserPreferencesRepository.DEFAULT_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT,
-    val widgetSliderBackingTone: BackingTone = BackingTone.DEFAULT
+    val widgetSliderBackingTone: BackingTone = UserPreferencesRepository.DEFAULT_WIDGET_SLIDER_BACKING_TONE
 )
 
 @Singleton
@@ -137,18 +137,31 @@ class UserPreferencesRepository @Inject constructor(
 
         // Universal 0.5sp increment step across all font size controls
         const val FONT_SIZE_STEP_SP = 0.5f
+        private const val LEGACY_BASE_FONT_SP = 12.0f
 
         const val MIN_TIME_FONT_SP = 10.0f
         const val MAX_TIME_FONT_SP = 74.0f
         const val DEFAULT_TIME_FONT_SP = 22.0f
+        const val DEFAULT_WIDGET_TIME_FONT_SP = 16.0f
+
+        const val DEFAULT_FULL_SCREEN_SHOW_TIME = false
+        val DEFAULT_FULL_SCREEN_DATE_POSITION = DateDisplayPosition.OFF
 
         const val MIN_FULL_SCREEN_TEMP_FONT_SP = 20.0f
         const val MAX_FULL_SCREEN_TEMP_FONT_SP = 74.0f
         const val DEFAULT_FULL_SCREEN_TEMP_FONT_SP = 46.0f
+        val DEFAULT_FULL_SCREEN_TEMP_FONT_STYLE = DisplayFontStyle.SERIF
+
+        const val DEFAULT_WIDGET_SHOW_TIME = true
+        val DEFAULT_WIDGET_DATE_POSITION = DateDisplayPosition.LEFT_OF_TIME
+        val DEFAULT_WIDGET_TIME_FONT_STYLE = DisplayFontStyle.SERIF
+        const val DEFAULT_WIDGET_TIME_COLOR_ARGB = 0xFF18FF18.toInt()
 
         const val MIN_WIDGET_TEMP_FONT_SP = 20.0f
         const val MAX_WIDGET_TEMP_FONT_SP = 74.0f
-        const val DEFAULT_WIDGET_TEMP_FONT_SP = 46.0f
+        const val DEFAULT_WIDGET_TEMP_FONT_SP = 60.0f
+        val DEFAULT_WIDGET_TEMP_FONT_STYLE = DisplayFontStyle.DEFAULT
+        const val DEFAULT_WIDGET_TEMP_COLOR_ARGB = 0xFF6AFF25.toInt()
 
         const val MIN_FORECAST_TRANSPARENCY_DELTA_PCT = -60
         const val MAX_FORECAST_TRANSPARENCY_DELTA_PCT = 60
@@ -157,11 +170,11 @@ class UserPreferencesRepository @Inject constructor(
 
         const val MIN_FORECAST_FONT_SP = 7.0f
         const val MAX_FORECAST_FONT_SP = 22.0f
-        const val DEFAULT_FORECAST_FONT_SP = 12.0f
+        const val DEFAULT_FORECAST_FONT_SP = 11.0f
 
         const val MIN_WIDGET_DETAILS_FONT_SP = 7.0f
         const val MAX_WIDGET_DETAILS_FONT_SP = 18.0f
-        const val DEFAULT_WIDGET_DETAILS_FONT_SP = 13.0f
+        const val DEFAULT_WIDGET_DETAILS_FONT_SP = 10.0f
 
         const val MIN_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT = -60
         const val MAX_WIDGET_DETAILS_TRANSPARENCY_DELTA_PCT = 60
@@ -170,12 +183,13 @@ class UserPreferencesRepository @Inject constructor(
 
         const val MIN_WIDGET_DATA_FONT_SP = 7.0f
         const val MAX_WIDGET_DATA_FONT_SP = 17.0f
-        const val DEFAULT_WIDGET_DATA_FONT_SP = 12.0f
+        const val DEFAULT_WIDGET_DATA_FONT_SP = 9.0f
 
         const val MIN_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT = -60
         const val MAX_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT = 60
-        const val DEFAULT_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT = 0
+        const val DEFAULT_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT = 10
         const val WIDGET_SLIDER_TRANSPARENCY_STEP_PCT = 10
+        val DEFAULT_WIDGET_SLIDER_BACKING_TONE = BackingTone.DARKEN
 
         private fun widgetBindingKey(appWidgetId: Int) =
             longPreferencesKey("widget_loc_$appWidgetId")
@@ -201,10 +215,10 @@ class UserPreferencesRepository @Inject constructor(
         }
 
         // Full Screen Time & Date
-        val fsShowTime = prefs[KEY_FULL_SCREEN_SHOW_TIME] ?: false
+        val fsShowTime = prefs[KEY_FULL_SCREEN_SHOW_TIME] ?: DEFAULT_FULL_SCREEN_SHOW_TIME
         val fsDatePosition = runCatching {
-            DateDisplayPosition.valueOf(prefs[KEY_FULL_SCREEN_DATE_POSITION] ?: DateDisplayPosition.OFF.name)
-        }.getOrDefault(DateDisplayPosition.OFF)
+            DateDisplayPosition.valueOf(prefs[KEY_FULL_SCREEN_DATE_POSITION] ?: DEFAULT_FULL_SCREEN_DATE_POSITION.name)
+        }.getOrDefault(DEFAULT_FULL_SCREEN_DATE_POSITION)
         val fsTimeFontSp = (
             prefs[KEY_FULL_SCREEN_TIME_FONT_SP_F]
                 ?: prefs[KEY_FULL_SCREEN_TIME_FONT_SP_LEGACY]?.toFloat()
@@ -222,8 +236,8 @@ class UserPreferencesRepository @Inject constructor(
                 ?: DEFAULT_FULL_SCREEN_TEMP_FONT_SP
             ).snapHalfSp().safeClamp(MIN_FULL_SCREEN_TEMP_FONT_SP, MAX_FULL_SCREEN_TEMP_FONT_SP)
         val fsTempStyle = runCatching {
-            DisplayFontStyle.valueOf(prefs[KEY_FULL_SCREEN_TEMP_FONT_STYLE] ?: DisplayFontStyle.DEFAULT.name)
-        }.getOrDefault(DisplayFontStyle.DEFAULT)
+            DisplayFontStyle.valueOf(prefs[KEY_FULL_SCREEN_TEMP_FONT_STYLE] ?: DEFAULT_FULL_SCREEN_TEMP_FONT_STYLE.name)
+        }.getOrDefault(DEFAULT_FULL_SCREEN_TEMP_FONT_STYLE)
         val fsTempColorArgb = (prefs[KEY_FULL_SCREEN_TEMP_COLOR_ARGB] ?: DisplayTextColor.WHITE.argb) or 0xFF000000.toInt()
 
         // Full Screen Forecast Cards
@@ -234,40 +248,42 @@ class UserPreferencesRepository @Inject constructor(
         }.getOrDefault(BackingTone.DEFAULT)
         val safeForecastFontSp = (
             prefs[KEY_FORECAST_FONT_SP_F]
-                ?: prefs[KEY_FORECAST_FONT_BOOST_SP_LEGACY]?.let { DEFAULT_FORECAST_FONT_SP + it.toFloat() }
+                ?: prefs[KEY_FORECAST_FONT_BOOST_SP_LEGACY]?.let { LEGACY_BASE_FONT_SP + it.toFloat() }
                 ?: DEFAULT_FORECAST_FONT_SP
             ).snapHalfSp().safeClamp(MIN_FORECAST_FONT_SP, MAX_FORECAST_FONT_SP)
 
-        // Widget Time & Date (with seamless fallback to legacy keys)
-        val legacyShowTime = prefs[KEY_LEGACY_SHOW_TIME_DISPLAY] ?: false
-        val wShowTime = prefs[KEY_WIDGET_SHOW_TIME] ?: legacyShowTime
+        // Widget Time & Date (with seamless fallback to legacy keys only if set)
+        val wShowTime = prefs[KEY_WIDGET_SHOW_TIME]
+            ?: prefs[KEY_LEGACY_SHOW_TIME_DISPLAY]
+            ?: DEFAULT_WIDGET_SHOW_TIME
         val wDatePosition = runCatching {
             DateDisplayPosition.valueOf(
                 prefs[KEY_WIDGET_DATE_POSITION]
                     ?: prefs[KEY_LEGACY_DATE_DISPLAY_POSITION]
-                    ?: DateDisplayPosition.OFF.name
+                    ?: DEFAULT_WIDGET_DATE_POSITION.name
             )
-        }.getOrDefault(DateDisplayPosition.OFF)
+        }.getOrDefault(DEFAULT_WIDGET_DATE_POSITION)
         val wTimeFontSp = (
             prefs[KEY_WIDGET_TIME_FONT_SP_F]
                 ?: prefs[KEY_WIDGET_TIME_FONT_SP_LEGACY]?.toFloat()
                 ?: prefs[KEY_LEGACY_TIME_FONT_SIZE_SP]?.toFloat()
-                ?: DEFAULT_TIME_FONT_SP
+                ?: DEFAULT_WIDGET_TIME_FONT_SP
             ).snapHalfSp().safeClamp(MIN_TIME_FONT_SP, MAX_TIME_FONT_SP)
         val wTimeStyle = runCatching {
             DisplayFontStyle.valueOf(
                 prefs[KEY_WIDGET_TIME_FONT_STYLE]
                     ?: prefs[KEY_LEGACY_TIME_FONT_STYLE]
-                    ?: DisplayFontStyle.DEFAULT.name
+                    ?: DEFAULT_WIDGET_TIME_FONT_STYLE.name
             )
-        }.getOrDefault(DisplayFontStyle.DEFAULT)
-        val legacyTimeColor = runCatching {
-            DisplayTextColor.valueOf(prefs[KEY_LEGACY_TIME_TEXT_COLOR] ?: DisplayTextColor.WHITE.name)
-        }.getOrDefault(DisplayTextColor.WHITE)
+        }.getOrDefault(DEFAULT_WIDGET_TIME_FONT_STYLE)
+        val legacyTimeColor = prefs[KEY_LEGACY_TIME_TEXT_COLOR]?.let {
+            runCatching { DisplayTextColor.valueOf(it) }.getOrNull()
+        }
         val wTimeColorArgb = (
             prefs[KEY_WIDGET_TIME_COLOR_ARGB]
                 ?: prefs[KEY_LEGACY_TIME_TEXT_COLOR_ARGB]
-                ?: legacyTimeColor.argb
+                ?: legacyTimeColor?.argb
+                ?: DEFAULT_WIDGET_TIME_COLOR_ARGB
             ) or 0xFF000000.toInt()
 
         // Widget Temperature
@@ -277,12 +293,16 @@ class UserPreferencesRepository @Inject constructor(
                 ?: DEFAULT_WIDGET_TEMP_FONT_SP
             ).snapHalfSp().safeClamp(MIN_WIDGET_TEMP_FONT_SP, MAX_WIDGET_TEMP_FONT_SP)
         val widgetTempStyle = runCatching {
-            DisplayFontStyle.valueOf(prefs[KEY_WIDGET_TEMP_FONT_STYLE] ?: DisplayFontStyle.DEFAULT.name)
-        }.getOrDefault(DisplayFontStyle.DEFAULT)
-        val legacyWidgetTempColor = runCatching {
-            DisplayTextColor.valueOf(prefs[KEY_WIDGET_TEMP_TEXT_COLOR] ?: DisplayTextColor.WHITE.name)
-        }.getOrDefault(DisplayTextColor.WHITE)
-        val widgetTempColorArgb = (prefs[KEY_WIDGET_TEMP_TEXT_COLOR_ARGB] ?: legacyWidgetTempColor.argb) or 0xFF000000.toInt()
+            DisplayFontStyle.valueOf(prefs[KEY_WIDGET_TEMP_FONT_STYLE] ?: DEFAULT_WIDGET_TEMP_FONT_STYLE.name)
+        }.getOrDefault(DEFAULT_WIDGET_TEMP_FONT_STYLE)
+        val legacyWidgetTempColor = prefs[KEY_WIDGET_TEMP_TEXT_COLOR]?.let {
+            runCatching { DisplayTextColor.valueOf(it) }.getOrNull()
+        }
+        val widgetTempColorArgb = (
+            prefs[KEY_WIDGET_TEMP_TEXT_COLOR_ARGB]
+                ?: legacyWidgetTempColor?.argb
+                ?: DEFAULT_WIDGET_TEMP_COLOR_ARGB
+            ) or 0xFF000000.toInt()
 
         // Widget Details Below Temp (H:/L:, Feels, Sky/Humidity, Wind/UV)
         val safeWidgetDetailsFontSp = (
@@ -301,7 +321,7 @@ class UserPreferencesRepository @Inject constructor(
         val safeDayOffset = (prefs[KEY_WIDGET_DAY_OFFSET] ?: 0).safeClamp(0, 5)
         val safeWidgetDataFontSp = (
             prefs[KEY_WIDGET_DATA_FONT_SP_F]
-                ?: prefs[KEY_WIDGET_DATA_FONT_DELTA_SP_LEGACY]?.let { DEFAULT_WIDGET_DATA_FONT_SP + it.toFloat() }
+                ?: prefs[KEY_WIDGET_DATA_FONT_DELTA_SP_LEGACY]?.let { LEGACY_BASE_FONT_SP + it.toFloat() }
                 ?: DEFAULT_WIDGET_DATA_FONT_SP
             ).snapHalfSp().safeClamp(MIN_WIDGET_DATA_FONT_SP, MAX_WIDGET_DATA_FONT_SP)
         val safeWidgetSliderTransparency = (
@@ -309,8 +329,8 @@ class UserPreferencesRepository @Inject constructor(
                 ?: DEFAULT_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT
             ).safeClamp(MIN_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT, MAX_WIDGET_SLIDER_TRANSPARENCY_DELTA_PCT)
         val widgetSliderTone = runCatching {
-            BackingTone.valueOf(prefs[KEY_WIDGET_SLIDER_BACKING_TONE] ?: BackingTone.DEFAULT.name)
-        }.getOrDefault(BackingTone.DEFAULT)
+            BackingTone.valueOf(prefs[KEY_WIDGET_SLIDER_BACKING_TONE] ?: DEFAULT_WIDGET_SLIDER_BACKING_TONE.name)
+        }.getOrDefault(DEFAULT_WIDGET_SLIDER_BACKING_TONE)
 
         AppPreferences(
             tempUnit = unit,
@@ -436,7 +456,7 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { prefs ->
             val current = (
                 prefs[KEY_FORECAST_FONT_SP_F]
-                    ?: prefs[KEY_FORECAST_FONT_BOOST_SP_LEGACY]?.let { DEFAULT_FORECAST_FONT_SP + it.toFloat() }
+                    ?: prefs[KEY_FORECAST_FONT_BOOST_SP_LEGACY]?.let { LEGACY_BASE_FONT_SP + it.toFloat() }
                     ?: DEFAULT_FORECAST_FONT_SP
                 ).snapHalfSp().safeClamp(MIN_FORECAST_FONT_SP, MAX_FORECAST_FONT_SP)
             prefs[KEY_FORECAST_FONT_SP_F] = (current + deltaSp)
@@ -465,7 +485,7 @@ class UserPreferencesRepository @Inject constructor(
                 prefs[KEY_WIDGET_TIME_FONT_SP_F]
                     ?: prefs[KEY_WIDGET_TIME_FONT_SP_LEGACY]?.toFloat()
                     ?: prefs[KEY_LEGACY_TIME_FONT_SIZE_SP]?.toFloat()
-                    ?: DEFAULT_TIME_FONT_SP
+                    ?: DEFAULT_WIDGET_TIME_FONT_SP
                 ).snapHalfSp().safeClamp(MIN_TIME_FONT_SP, MAX_TIME_FONT_SP)
             prefs[KEY_WIDGET_TIME_FONT_SP_F] = (current + deltaSp)
                 .snapHalfSp()
@@ -540,7 +560,7 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { prefs ->
             val current = (
                 prefs[KEY_WIDGET_DATA_FONT_SP_F]
-                    ?: prefs[KEY_WIDGET_DATA_FONT_DELTA_SP_LEGACY]?.let { DEFAULT_WIDGET_DATA_FONT_SP + it.toFloat() }
+                    ?: prefs[KEY_WIDGET_DATA_FONT_DELTA_SP_LEGACY]?.let { LEGACY_BASE_FONT_SP + it.toFloat() }
                     ?: DEFAULT_WIDGET_DATA_FONT_SP
                 ).snapHalfSp().safeClamp(MIN_WIDGET_DATA_FONT_SP, MAX_WIDGET_DATA_FONT_SP)
             prefs[KEY_WIDGET_DATA_FONT_SP_F] = (current + deltaSp)

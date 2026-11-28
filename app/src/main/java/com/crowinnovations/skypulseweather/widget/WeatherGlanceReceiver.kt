@@ -19,6 +19,10 @@ abstract class BaseSkyPulseWidgetReceiver : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
+        if (action == WeatherWidgetPublisher.ACTION_NOOP_SLIDER_TAP) {
+            // Intentional no-op: absorbs slider item taps cleanly so swiping/tapping the 10-day strip never opens Settings or MainActivity
+            return
+        }
         if (action == WeatherWidgetPublisher.ACTION_REFRESH_WIDGET) {
             val pendingResult = goAsync()
             val appContext = context.applicationContext

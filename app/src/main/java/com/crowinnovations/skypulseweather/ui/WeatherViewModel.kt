@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crowinnovations.skypulseweather.data.local.AppPreferences
 import com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository
+import com.crowinnovations.skypulseweather.data.remote.RadarMapRepository
 import com.crowinnovations.skypulseweather.data.repository.SyncResult
 import com.crowinnovations.skypulseweather.data.repository.WeatherRepository
 import com.crowinnovations.skypulseweather.domain.DateDisplayPosition
@@ -32,6 +33,7 @@ data class TransientUiState(
     val isRefreshing: Boolean = false,
     val offlineMessage: String? = null,
     val showLocationsSheet: Boolean = false,
+    val showRadarMap: Boolean = false,
     val showSettingsDialog: Boolean = false,
     val searchQuery: String = "",
     val searchResults: List<LocationSearchCandidate> = emptyList(),
@@ -48,6 +50,7 @@ data class WeatherUiState(
     val isRefreshing: Boolean = false,
     val offlineMessage: String? = null,
     val showLocationsSheet: Boolean = false,
+    val showRadarMap: Boolean = false,
     val showSettingsDialog: Boolean = false,
     val searchQuery: String = "",
     val searchResults: List<LocationSearchCandidate> = emptyList(),
@@ -65,7 +68,8 @@ data class WeatherUiState(
 @HiltViewModel
 class WeatherViewModel @Inject constructor(
     private val repository: WeatherRepository,
-    private val prefsRepository: UserPreferencesRepository
+    private val prefsRepository: UserPreferencesRepository,
+    val radarMapRepository: RadarMapRepository
 ) : ViewModel() {
 
     private val transientState = MutableStateFlow(TransientUiState())
@@ -89,6 +93,7 @@ class WeatherViewModel @Inject constructor(
             isRefreshing = transient.isRefreshing,
             offlineMessage = transient.offlineMessage,
             showLocationsSheet = transient.showLocationsSheet,
+            showRadarMap = transient.showRadarMap,
             showSettingsDialog = transient.showSettingsDialog,
             searchQuery = transient.searchQuery,
             searchResults = transient.searchResults,
@@ -155,6 +160,14 @@ class WeatherViewModel @Inject constructor(
 
     fun closeSettingsDialog() {
         transientState.update { it.copy(showSettingsDialog = false) }
+    }
+
+    fun openRadarMap() {
+        transientState.update { it.copy(showRadarMap = true) }
+    }
+
+    fun closeRadarMap() {
+        transientState.update { it.copy(showRadarMap = false) }
     }
 
     fun onSearchQueryChange(newQuery: String) {

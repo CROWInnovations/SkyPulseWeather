@@ -126,6 +126,8 @@ object WeatherWidgetPublisher {
     const val EXTRA_LOCATION_ID = "extra_location_id"
     const val ACTION_SCROLL_FORECAST = "com.crowinnovations.skypulseweather.ACTION_SCROLL_FORECAST"
     const val EXTRA_TARGET_OFFSET = "extra_target_day_offset"
+    const val ACTION_NOOP_SLIDER_TAP = "com.crowinnovations.skypulseweather.ACTION_NOOP_SLIDER_TAP"
+    const val EXTRA_NOOP_DAY_INDEX = "extra_noop_day_index"
 
     @OptIn(ExperimentalGlanceRemoteViewsApi::class)
     private val glanceComposer = GlanceRemoteViews()
@@ -257,12 +259,12 @@ object WeatherWidgetPublisher {
             UserPreferencesRepository.MIN_WIDGET_DATA_FONT_SP,
             UserPreferencesRepository.MAX_WIDGET_DATA_FONT_SP
         )
-        val sliderFontDelta = safeSliderFontSp - UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP
+        val sliderLayoutDelta = safeSliderFontSp - WIDGET_SLIDER_LAYOUT_REF_SP
         val safeDetailsFontSp = prefs.widgetDetailsFontSizeSp.safeClamp(
             UserPreferencesRepository.MIN_WIDGET_DETAILS_FONT_SP,
             UserPreferencesRepository.MAX_WIDGET_DETAILS_FONT_SP
         )
-        val detailsFontDelta = safeDetailsFontSp - UserPreferencesRepository.DEFAULT_WIDGET_DETAILS_FONT_SP
+        val detailsLayoutDelta = safeDetailsFontSp - WIDGET_DETAILS_LAYOUT_REF_SP
         val sliderBackingColor = resolveWidgetSliderBackingColor(
             tone = prefs.widgetSliderBackingTone,
             transparencyDeltaPct = prefs.widgetSliderTransparencyDeltaPct
@@ -276,11 +278,11 @@ object WeatherWidgetPublisher {
             prefs.widgetDateDisplayPosition == DateDisplayPosition.RIGHT_OF_TIME
         val hasBelowDate = prefs.widgetDateDisplayPosition == DateDisplayPosition.BELOW_TIME
         val is24h = android.text.format.DateFormat.is24HourFormat(context)
-        val stripExtraBoostDp = (sliderFontDelta * 2.6f * safeFontScale) / hostResizeRatio
+        val stripExtraBoostDp = (sliderLayoutDelta * 2.6f * safeFontScale) / hostResizeRatio
         val stripHeightFloat = if (isTall) {
-            ((68f / hostResizeRatio).safeClamp(68f, 78f) + stripExtraBoostDp).safeClamp(52f, (hDp * 0.34f).coerceAtLeast(78f))
+            ((68f / hostResizeRatio).safeClamp(68f, 78f) + stripExtraBoostDp).safeClamp(50f, (hDp * 0.34f).coerceAtLeast(78f))
         } else {
-            ((56f / hostResizeRatio).safeClamp(56f, 64f) + stripExtraBoostDp).safeClamp(44f, (hDp * 0.40f).coerceAtLeast(64f))
+            ((56f / hostResizeRatio).safeClamp(56f, 64f) + stripExtraBoostDp).safeClamp(42f, (hDp * 0.40f).coerceAtLeast(64f))
         }
 
         val maxHeightClockSp = when {
@@ -298,7 +300,7 @@ object WeatherWidgetPublisher {
             else -> {
                 val tenDayOverhead = stripHeightFloat + (if (isTall && model.days.size > 5) 28f else 10f)
                 val alertOverhead = if (isTall && model.alertSummary != null) 28f else 0f
-                val minTelemetryAndHeroH = ((if (isCompactHeight) 98f else 130f) + detailsFontDelta * 5.5f).coerceAtLeast(80f)
+                val minTelemetryAndHeroH = ((if (isCompactHeight) 98f else 130f) + detailsLayoutDelta * 5.5f).coerceAtLeast(80f)
                 val budget = (hDp - topPadFloat * 2f - tenDayOverhead - alertOverhead - minTelemetryAndHeroH)
                     .coerceAtLeast(18f)
                 val rawMax = if (hasBelowDate) {
@@ -355,7 +357,7 @@ object WeatherWidgetPublisher {
         val maxMoonBottomFraction = if (isLargeForecastMode) {
             val tenDayH = stripHeightFloat + (if (isTall && model.days.size > 5) 28f else 10f)
             val alertH = if (isTall && model.alertSummary != null) 29f else 0f
-            val moonPhaseLabelH = if (!model.isDay) (18f + detailsFontDelta * 1.4f).coerceAtLeast(12f) else 0f
+            val moonPhaseLabelH = if (!model.isDay) (18f + detailsLayoutDelta * 1.4f).coerceAtLeast(12f) else 0f
             val maxBottomDp = (hDp - topPadFloat - tenDayH - alertH - moonPhaseLabelH - 6f)
                 .coerceAtLeast(hDp * (topReservedFraction + 0.18f))
             (maxBottomDp / hDp.coerceAtLeast(80f)).safeClamp(topReservedFraction + 0.18f, 0.74f)
@@ -483,7 +485,7 @@ object WeatherWidgetPublisher {
                 days = model.days,
                 stripWidthDp = stripWidthDp,
                 stripHeightDp = stripHeightFloat,
-                dataFontDeltaSp = sliderFontDelta,
+                selectedSliderFontSp = safeSliderFontSp,
                 primaryTextArgb = sliderPrimaryTextArgb,
                 rainTextArgb = sliderRainTextArgb,
                 hostResizeRatio = hostResizeRatio,
@@ -601,7 +603,51 @@ private fun buildStyledTopClockRemoteViews(
     }
 }
 
-private const val SWIPE_LIST_SCALE = 0.025f
+private const val SWIPE_LIST_SCALE = 0.5f
+internal const val WIDGET_SLIDER_LAYOUT_REF_SP = 12.0f
+internal const val WIDGET_DETAILS_LAYOUT_REF_SP = 13.0f
+internal const val WIDGET_TEMP_MINI_REF_SP = 46.0f
+
+internal fun resolveWidgetDetailsPhysicalSp(
+    selectedDetailsSp: Float,
+    isTall: Boolean
+): Triple<Float, Float, Float> {
+    val safeSp = selectedDetailsSp.safeClamp(
+        UserPreferencesRepository.MIN_WIDGET_DETAILS_FONT_SP,
+        UserPreferencesRepository.MAX_WIDGET_DETAILS_FONT_SP
+    )
+    // Direct WYSIWYG physical sp mapping (no DEFAULT_WIDGET_DETAILS_FONT_SP delta coupling!)
+    val primaryLineSp = if (isTall) safeSp else (safeSp - 0.4f).coerceAtLeast(6.5f)
+    val secondaryLineSp = (primaryLineSp - 0.2f).coerceAtLeast(6.2f)
+    val moonPhaseSp = (safeSp - 0.2f).safeClamp(6.2f, 13.5f)
+    return Triple(primaryLineSp, secondaryLineSp, moonPhaseSp)
+}
+
+internal fun resolveWidgetSliderPhysicalSp(
+    selectedSliderSp: Float,
+    isTall: Boolean
+): Triple<Float, Float, Float> {
+    val safeSp = selectedSliderSp.safeClamp(
+        UserPreferencesRepository.MIN_WIDGET_DATA_FONT_SP,
+        UserPreferencesRepository.MAX_WIDGET_DATA_FONT_SP
+    )
+    // Direct WYSIWYG physical sp mapping (no DEFAULT_WIDGET_DATA_FONT_SP delta coupling!)
+    val hiLoSp = if (isTall) safeSp else (safeSp - 0.4f).coerceAtLeast(6.5f)
+    val dateSp = (hiLoSp - 0.5f).coerceAtLeast(6.0f)
+    val rainSp = (hiLoSp - 0.4f).coerceAtLeast(6.0f)
+    return Triple(dateSp, hiLoSp, rainSp)
+}
+
+internal fun computeTargetAndFloorVirtualSp(
+    desiredPhysicalSp: Float,
+    minReadablePhysicalSp: Float,
+    hostResizeRatio: Float
+): Pair<Float, Float> {
+    val safeRatio = hostResizeRatio.safeClamp(0.65f, 1.25f)
+    val targetVirtual = desiredPhysicalSp.coerceAtLeast(5.5f) / safeRatio
+    val shrinkFloorVirtual = minOf(targetVirtual, minReadablePhysicalSp.coerceAtLeast(5.5f) / safeRatio)
+    return targetVirtual to shrinkFloorVirtual
+}
 
 @RequiresApi(Build.VERSION_CODES.S)
 private fun createSwipeStripShellRemoteViews(
@@ -621,14 +667,15 @@ private fun autoFitWidgetLineSp(
     text: String,
     availWidthDp: Float,
     desiredPhysicalSp: Float,
-    minVirtualSp: Float,
-    maxVirtualSp: Float,
+    minReadablePhysicalSp: Float = 6.0f,
     hostResizeRatio: Float,
     fontScale: Float
 ): Float {
-    val safeMax = maxVirtualSp.coerceAtLeast(minVirtualSp)
-    val safeRatio = hostResizeRatio.safeClamp(0.65f, 1.25f)
-    val targetVirtual = (desiredPhysicalSp / safeRatio).safeClamp(minVirtualSp, safeMax)
+    val (targetVirtual, shrinkFloorVirtual) = computeTargetAndFloorVirtualSp(
+        desiredPhysicalSp = desiredPhysicalSp,
+        minReadablePhysicalSp = minReadablePhysicalSp,
+        hostResizeRatio = hostResizeRatio
+    )
     if (text.isEmpty()) return targetVirtual
     val safeAvailW = availWidthDp.coerceAtLeast(24f)
     val measuredW = WidgetBitmapRenderer.measureTightBoldTextWidthDp(
@@ -639,7 +686,7 @@ private fun autoFitWidgetLineSp(
     )
     if (measuredW <= safeAvailW) return targetVirtual
     val scaled = targetVirtual * (safeAvailW / measuredW.coerceAtLeast(1f))
-    return scaled.safeClamp(minVirtualSp, safeMax)
+    return scaled.safeClamp(shrinkFloorVirtual, targetVirtual)
 }
 
 internal fun resolveWidgetDetailsBackingColor(
@@ -698,7 +745,7 @@ private fun attachSwipeableTenDayAdapterToRoot(
     days: List<WidgetDayUi>,
     stripWidthDp: Float,
     stripHeightDp: Float,
-    dataFontDeltaSp: Float,
+    selectedSliderFontSp: Float,
     primaryTextArgb: Int,
     rainTextArgb: Int,
     hostResizeRatio: Float,
@@ -715,14 +762,13 @@ private fun attachSwipeableTenDayAdapterToRoot(
     val widestHiLo = days.maxByOrNull { it.highLowLabel.length }?.highLowLabel ?: "99° / 99°"
 
     val safeRatio = hostResizeRatio.safeClamp(0.65f, 1.25f)
-    val desiredDatePhysicalSp = ((if (isTall) 11.4f else 10.6f) + dataFontDeltaSp).coerceAtLeast(6.0f)
-    val desiredHiLoPhysicalSp = ((if (isTall) 12.0f else 11.2f) + dataFontDeltaSp).coerceAtLeast(6.5f)
-    val desiredRainPhysicalSp = ((if (isTall) 11.2f else 10.2f) + dataFontDeltaSp * 0.85f).coerceAtLeast(6.0f)
+    val (desiredDatePhysicalSp, desiredHiLoPhysicalSp, desiredRainPhysicalSp) =
+        resolveWidgetSliderPhysicalSp(selectedSliderFontSp, isTall)
+    val sliderLayoutDelta = selectedSliderFontSp - WIDGET_SLIDER_LAYOUT_REF_SP
 
-    // Dynamically widen swipeable day columns with generous inter-column padding when font size is boosted
-    // so +0.5sp..+5sp grows visibly without '...' truncation, while negative deltas shrink cleanly down to 7sp
-    val targetVirtualDateSp = (desiredDatePhysicalSp / safeRatio).safeClamp(5.8f, 22.0f)
-    val targetVirtualHiLoSp = (desiredHiLoPhysicalSp / safeRatio).safeClamp(6.2f, 22.5f)
+    // Dynamically widen swipeable day columns when font size exceeds 5-column natural width
+    val targetVirtualDateSp = (desiredDatePhysicalSp / safeRatio).safeClamp(5.8f, 24.0f)
+    val targetVirtualHiLoSp = (desiredHiLoPhysicalSp / safeRatio).safeClamp(6.0f, 24.5f)
     val neededDateW = (WidgetBitmapRenderer.measureTightBoldTextWidthDp(
         context = context,
         text = widestDate,
@@ -736,21 +782,19 @@ private fun attachSwipeableTenDayAdapterToRoot(
         fontScale = fontScale
     ) * 1.12f) + 12f
     val maxSingleColWidthDp = (stripWidthDp / 2.5f).coerceAtLeast(defaultColWidthDp)
-    val colWidthDp = if (dataFontDeltaSp > 0f) {
+    val colWidthDp = if (sliderLayoutDelta > 0f) {
         maxOf(defaultColWidthDp, neededDateW, neededHiLoW).safeClamp(defaultColWidthDp, maxSingleColWidthDp)
     } else {
         defaultColWidthDp
     }
 
-    val safeTextFitColW = (colWidthDp - if (dataFontDeltaSp > 0f) 9f else 5f).coerceAtLeast(32f)
-    val minDeltaVirtual = (dataFontDeltaSp / safeRatio).coerceAtMost(0f)
+    val safeTextFitColW = (colWidthDp - if (sliderLayoutDelta > 0f) 9f else 5f).coerceAtLeast(32f)
     var baseDateSp = autoFitWidgetLineSp(
         context = context,
         text = widestDate,
         availWidthDp = safeTextFitColW,
         desiredPhysicalSp = desiredDatePhysicalSp,
-        minVirtualSp = (9.4f + minDeltaVirtual).coerceAtLeast(5.8f),
-        maxVirtualSp = ((if (isTall) 14.0f else 12.8f) + (dataFontDeltaSp / safeRatio)).coerceAtLeast(6.5f),
+        minReadablePhysicalSp = 5.8f,
         hostResizeRatio = hostResizeRatio,
         fontScale = fontScale
     )
@@ -759,8 +803,7 @@ private fun attachSwipeableTenDayAdapterToRoot(
         text = widestHiLo,
         availWidthDp = safeTextFitColW,
         desiredPhysicalSp = desiredHiLoPhysicalSp,
-        minVirtualSp = (9.8f + minDeltaVirtual).coerceAtLeast(6.2f),
-        maxVirtualSp = ((if (isTall) 14.6f else 13.4f) + (dataFontDeltaSp / safeRatio)).coerceAtLeast(7.0f),
+        minReadablePhysicalSp = 6.0f,
         hostResizeRatio = hostResizeRatio,
         fontScale = fontScale
     )
@@ -769,20 +812,19 @@ private fun attachSwipeableTenDayAdapterToRoot(
         text = "100%",
         availWidthDp = (colWidthDp - rawIconDp - 2.5f).coerceAtLeast(22f),
         desiredPhysicalSp = desiredRainPhysicalSp,
-        minVirtualSp = (9.0f + minDeltaVirtual * 0.85f).coerceAtLeast(5.8f),
-        maxVirtualSp = ((if (isTall) 13.8f else 12.4f) + (dataFontDeltaSp / safeRatio)).coerceAtLeast(6.5f),
+        minReadablePhysicalSp = 5.8f,
         hostResizeRatio = hostResizeRatio,
         fontScale = fontScale
     )
 
-    // Guarantee vertical height safety across all OS fontScale settings (0.85x..1.45x)
+    // Guarantee vertical height safety across all OS fontScale settings without inflating smaller sp choices
     val availTextVerticalDp = (stripHeightDp - rawIconDp - 4f).coerceAtLeast(22f)
-    val maxCombinedSp = (availTextVerticalDp / (fontScale * 1.18f)).coerceAtLeast(18f)
+    val maxCombinedSp = (availTextVerticalDp / (fontScale * 1.18f)).coerceAtLeast(14f)
     val combinedSp = baseDateSp + baseHiLoSp
     if (combinedSp > maxCombinedSp) {
-        val vScale = (maxCombinedSp / combinedSp).safeClamp(0.65f, 1f)
-        baseDateSp = (baseDateSp * vScale).coerceAtLeast(8.8f)
-        baseHiLoSp = (baseHiLoSp * vScale).coerceAtLeast(9.2f)
+        val vScale = (maxCombinedSp / combinedSp).safeClamp(0.55f, 1f)
+        baseDateSp = (baseDateSp * vScale).coerceAtLeast(minOf(baseDateSp, 5.8f))
+        baseHiLoSp = (baseHiLoSp * vScale).coerceAtLeast(minOf(baseHiLoSp, 6.0f))
     }
 
     val dateSp = baseDateSp * invScale
@@ -823,15 +865,35 @@ private fun attachSwipeableTenDayAdapterToRoot(
             setTextViewText(R.id.day_item_hilo, day.highLowLabel)
             setTextViewTextSize(R.id.day_item_hilo, TypedValue.COMPLEX_UNIT_SP, hiLoSp)
             setTextColor(R.id.day_item_hilo, primaryTextArgb)
+
+            val fillIn = Intent().apply {
+                data = Uri.parse("skypulse://widget/noop_day/$idx")
+                putExtra(WeatherWidgetPublisher.EXTRA_NOOP_DAY_INDEX, idx)
+            }
+            setOnClickFillInIntent(R.id.day_item_root, fillIn)
         }
         builder.addItem(idx.toLong(), itemRv)
     }
+
+    val noopTemplateIntent = Intent(context, WeatherGlanceReceiver::class.java).apply {
+        action = WeatherWidgetPublisher.ACTION_NOOP_SLIDER_TAP
+        data = Uri.parse("skypulse://widget/noop_slider")
+    }
+    val noopFlags = PendingIntent.FLAG_UPDATE_CURRENT or
+        (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0)
+    val noopTemplatePendingIntent = PendingIntent.getBroadcast(
+        context,
+        9401,
+        noopTemplateIntent,
+        noopFlags
+    )
 
     val targetAdapterPosition = if (scrollOffset <= 0) {
         0
     } else {
         (scrollOffset + visibleSlotCount - 1).safeClamp(0, (days.size - 1).coerceAtLeast(0))
     }
+    rootRv.setPendingIntentTemplate(R.id.widget_ten_day_list, noopTemplatePendingIntent)
     rootRv.setRemoteAdapter(R.id.widget_ten_day_list, builder.build())
     rootRv.setScrollPosition(R.id.widget_ten_day_list, targetAdapterPosition)
 }
@@ -1002,27 +1064,22 @@ private fun WidgetCardSurface(
     val isSquare2x2 = widthDp in 108f..212f && heightDp >= 108f
     val cornerRad = if (isMini1x1 || isStrip2x1) 18.dp else 24.dp
 
-    val tempScaleRatio = prefs.widgetTempFontSizeSp /
-        UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_SP
+    val tempScaleRatio = prefs.widgetTempFontSizeSp / WIDGET_TEMP_MINI_REF_SP
     val safeHostRatio = hostResizeRatio.safeClamp(0.65f, 1.25f)
 
-    // Independent 10-Day Slider font delta
+    // Independent 10-Day Slider font size (direct sp mapping)
     val safeSliderFontSp = prefs.widgetDataFontSizeSp.safeClamp(
         UserPreferencesRepository.MIN_WIDGET_DATA_FONT_SP,
         UserPreferencesRepository.MAX_WIDGET_DATA_FONT_SP
     )
-    val sliderFontDelta = safeSliderFontSp - UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP
-    val sliderVirtualDeltaBoost = sliderFontDelta / safeHostRatio
-    val sliderMinDeltaVirtual = sliderVirtualDeltaBoost.coerceAtMost(0f)
+    val sliderLayoutDelta = safeSliderFontSp - WIDGET_SLIDER_LAYOUT_REF_SP
 
-    // Independent Details Below Temp font delta & backing
+    // Independent Details Below Temp font size & backing (direct sp mapping)
     val safeDetailsFontSp = prefs.widgetDetailsFontSizeSp.safeClamp(
         UserPreferencesRepository.MIN_WIDGET_DETAILS_FONT_SP,
         UserPreferencesRepository.MAX_WIDGET_DETAILS_FONT_SP
     )
-    val detailsFontDelta = safeDetailsFontSp - UserPreferencesRepository.DEFAULT_WIDGET_DETAILS_FONT_SP
-    val detailsVirtualDeltaBoost = detailsFontDelta / safeHostRatio
-    val detailsMinDeltaVirtual = detailsVirtualDeltaBoost.coerceAtMost(0f)
+    val detailsLayoutDelta = safeDetailsFontSp - WIDGET_DETAILS_LAYOUT_REF_SP
 
     val detailsBackingColor = resolveWidgetDetailsBackingColor(
         tone = prefs.widgetDetailsBackingTone,
@@ -1151,9 +1208,8 @@ private fun WidgetCardSurface(
                             context = context,
                             text = model.highLowCompact,
                             availWidthDp = (widthDp - 10f).coerceAtLeast(32f),
-                            desiredPhysicalSp = (10.8f + detailsFontDelta * 0.75f).coerceAtLeast(6.5f),
-                            minVirtualSp = (9.8f + detailsMinDeltaVirtual * 0.75f).coerceAtLeast(6.0f),
-                            maxVirtualSp = (13.4f + detailsVirtualDeltaBoost * 0.75f).coerceAtLeast(7.0f),
+                            desiredPhysicalSp = (safeDetailsFontSp * 0.92f).safeClamp(6.2f, 12.5f),
+                            minReadablePhysicalSp = 5.8f,
                             hostResizeRatio = hostResizeRatio,
                             fontScale = fontScale
                         ).sp
@@ -1194,8 +1250,7 @@ private fun WidgetCardSurface(
                     text = model.locationName,
                     availWidthDp = stripAvailCityW,
                     desiredPhysicalSp = 12.2f,
-                    minVirtualSp = 10.4f,
-                    maxVirtualSp = 15.2f,
+                    minReadablePhysicalSp = 9.0f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1203,7 +1258,7 @@ private fun WidgetCardSurface(
                 val fullStripSubW = WidgetBitmapRenderer.measureTightBoldTextWidthDp(
                     context = context,
                     text = fullStripSub,
-                    virtualFontSizeSp = (11.2f / hostResizeRatio).safeClamp(11.0f, 14.0f),
+                    virtualFontSizeSp = (safeDetailsFontSp / safeHostRatio).safeClamp(6.5f, 18.0f),
                     fontScale = fontScale
                 )
                 val chosenStripSub = if (fullStripSubW <= stripAvailCityW) {
@@ -1215,9 +1270,8 @@ private fun WidgetCardSurface(
                     context = context,
                     text = chosenStripSub,
                     availWidthDp = stripAvailCityW,
-                    desiredPhysicalSp = (11.4f + detailsFontDelta).coerceAtLeast(6.5f),
-                    minVirtualSp = (10.4f + detailsMinDeltaVirtual).coerceAtLeast(6.0f),
-                    maxVirtualSp = (14.4f + detailsVirtualDeltaBoost).coerceAtLeast(7.0f),
+                    desiredPhysicalSp = safeDetailsFontSp,
+                    minReadablePhysicalSp = 6.0f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1293,13 +1347,14 @@ private fun WidgetCardSurface(
                 val sqDetailsPadH = if (hasDetailsBacking) 12f else 0f
                 val sqDetailsPadV = if (hasDetailsBacking) 6f else 0f
                 val sqSafeRowW = (sqFullRowW - sqDetailsPadH).coerceAtLeast(72f)
+                val (sqPrimaryDetailsSp, sqSecondaryDetailsSp, _) =
+                    resolveWidgetDetailsPhysicalSp(safeDetailsFontSp, isTall = false)
                 val sqHlSp = autoFitWidgetLineSp(
                     context = context,
                     text = sqHlLineText,
                     availWidthDp = sqSafeRowW,
-                    desiredPhysicalSp = (11.8f + detailsFontDelta).coerceAtLeast(6.8f),
-                    minVirtualSp = (10.6f + detailsMinDeltaVirtual).coerceAtLeast(6.2f),
-                    maxVirtualSp = (14.8f + detailsVirtualDeltaBoost).coerceAtLeast(7.2f),
+                    desiredPhysicalSp = sqPrimaryDetailsSp,
+                    minReadablePhysicalSp = 6.2f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1307,9 +1362,8 @@ private fun WidgetCardSurface(
                     context = context,
                     text = sqCondHumText,
                     availWidthDp = sqSafeRowW,
-                    desiredPhysicalSp = (11.4f + detailsFontDelta).coerceAtLeast(6.5f),
-                    minVirtualSp = (10.2f + detailsMinDeltaVirtual).coerceAtLeast(6.0f),
-                    maxVirtualSp = (14.2f + detailsVirtualDeltaBoost).coerceAtLeast(7.0f),
+                    desiredPhysicalSp = sqSecondaryDetailsSp,
+                    minReadablePhysicalSp = 6.0f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1317,9 +1371,8 @@ private fun WidgetCardSurface(
                     context = context,
                     text = model.windAndUvLine,
                     availWidthDp = sqSafeRowW,
-                    desiredPhysicalSp = (11.4f + detailsFontDelta).coerceAtLeast(6.5f),
-                    minVirtualSp = (10.2f + detailsMinDeltaVirtual).coerceAtLeast(6.0f),
-                    maxVirtualSp = (14.2f + detailsVirtualDeltaBoost).coerceAtLeast(7.0f),
+                    desiredPhysicalSp = sqSecondaryDetailsSp,
+                    minReadablePhysicalSp = 6.0f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1506,13 +1559,13 @@ private fun WidgetCardSurface(
                     .safeClamp(11.0f, maxCitySpCap)
                 val locNameSp = locNameSpFloat.sp
 
-                val stripExtraBoostDp = (sliderFontDelta * 2.6f * fontScale) / safeHostRatio
+                val stripExtraBoostDp = (sliderLayoutDelta * 2.6f * fontScale) / safeHostRatio
                 val stripHeightFloat = if (isTall) {
                     ((68f / hostResizeRatio).safeClamp(68f, 78f) + stripExtraBoostDp)
-                        .safeClamp(52f, (heightDp * 0.34f).coerceAtLeast(78f))
+                        .safeClamp(50f, (heightDp * 0.34f).coerceAtLeast(78f))
                 } else {
                     ((56f / hostResizeRatio).safeClamp(56f, 64f) + stripExtraBoostDp)
-                        .safeClamp(44f, (heightDp * 0.40f).coerceAtLeast(64f))
+                        .safeClamp(42f, (heightDp * 0.40f).coerceAtLeast(64f))
                 }
                 val stripSectionOverhead = if (showTenDayStrip) {
                     stripHeightFloat + (if (isTall && model.days.size > 5) 28f else 10f)
@@ -1520,7 +1573,7 @@ private fun WidgetCardSurface(
                     0f
                 }
                 val alertOverhead = if (isTall && model.alertSummary != null) {
-                    (28f + detailsFontDelta * 0.9f).coerceAtLeast(22f)
+                    (28f + detailsLayoutDelta * 0.9f).coerceAtLeast(22f)
                 } else {
                     0f
                 }
@@ -1533,7 +1586,7 @@ private fun WidgetCardSurface(
                     stripWidthFloat
                 }
 
-                // Balanced 3-line telemetry so H:/L: and Wind scale smoothly both down and up without wrapping
+                // Direct WYSIWYG 3-line Details Below Temp sizing matching selected sp in Settings
                 val hlPrimaryLineText = if (model.locationId == -1L || model.days.isEmpty()) {
                     model.highLowSkyFeelsCompact
                 } else {
@@ -1547,44 +1600,54 @@ private fun WidgetCardSurface(
                 val detailsBoxPadH = if (hasDetailsBacking) 14f else 0f
                 val detailsBoxPadV = if (hasDetailsBacking) 6f else 0f
                 val safeTelemetryAvailW = (telemetryWidthFloat - 6f - detailsBoxPadH).coerceAtLeast(64f)
-                val hlPrimarySpFloat = autoFitWidgetLineSp(
+                val (detailsPrimaryPhysicalSp, detailsSecondaryPhysicalSp, moonPhasePhysicalSp) =
+                    resolveWidgetDetailsPhysicalSp(safeDetailsFontSp, isTall = isTall)
+
+                var hlPrimarySpFloat = autoFitWidgetLineSp(
                     context = context,
                     text = hlPrimaryLineText,
                     availWidthDp = safeTelemetryAvailW,
-                    desiredPhysicalSp = ((if (isTall) 13.4f else 12.2f) + detailsFontDelta).coerceAtLeast(7.0f),
-                    minVirtualSp = (10.4f + detailsMinDeltaVirtual).coerceAtLeast(6.5f),
-                    maxVirtualSp = ((if (isTall) 16.8f else 15.2f) + detailsVirtualDeltaBoost).coerceAtLeast(7.5f),
+                    desiredPhysicalSp = detailsPrimaryPhysicalSp,
+                    minReadablePhysicalSp = 6.2f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
-                val condHumiditySpFloat = autoFitWidgetLineSp(
+                var condHumiditySpFloat = autoFitWidgetLineSp(
                     context = context,
                     text = condHumidityLineText,
                     availWidthDp = safeTelemetryAvailW,
-                    desiredPhysicalSp = ((if (isTall) 12.8f else 11.6f) + detailsFontDelta).coerceAtLeast(6.8f),
-                    minVirtualSp = (9.8f + detailsMinDeltaVirtual).coerceAtLeast(6.2f),
-                    maxVirtualSp = ((if (isTall) 15.8f else 14.4f) + detailsVirtualDeltaBoost).coerceAtLeast(7.2f),
+                    desiredPhysicalSp = detailsSecondaryPhysicalSp,
+                    minReadablePhysicalSp = 6.0f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
-                val windUvSpFloat = autoFitWidgetLineSp(
+                var windUvSpFloat = autoFitWidgetLineSp(
                     context = context,
                     text = model.windAndUvLine,
                     availWidthDp = safeTelemetryAvailW,
-                    desiredPhysicalSp = ((if (isTall) 12.8f else 11.8f) + detailsFontDelta).coerceAtLeast(6.8f),
-                    minVirtualSp = (10.0f + detailsMinDeltaVirtual).coerceAtLeast(6.2f),
-                    maxVirtualSp = ((if (isTall) 15.8f else 14.6f) + detailsVirtualDeltaBoost).coerceAtLeast(7.2f),
+                    desiredPhysicalSp = detailsSecondaryPhysicalSp,
+                    minReadablePhysicalSp = 6.0f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
 
-                val lowerTelemetryOverhead = ((hlPrimarySpFloat + condHumiditySpFloat +
+                var lowerTelemetryOverhead = ((hlPrimarySpFloat + condHumiditySpFloat +
                     (if (showWindLine) windUvSpFloat else 0f)) * fontScale * 1.38f) + 9f + detailsBoxPadV
                 val cityHeaderOverhead = (locNameSpFloat * fontScale * 1.34f) + 6f
 
                 val stageAvailableHeightDp = (heightDp - topPadFloat - 4f - clockOverhead -
                     stripSectionOverhead - alertOverhead - 2f)
                     .coerceAtLeast(64f)
+                // Prevent large 16sp–18sp details choices on compact widgets from overflowing vertical stage
+                val maxAllowedDetailsBudgetDp = (stageAvailableHeightDp - cityHeaderOverhead - 26f).coerceAtLeast(24f)
+                if (lowerTelemetryOverhead > maxAllowedDetailsBudgetDp) {
+                    val vFit = (maxAllowedDetailsBudgetDp / lowerTelemetryOverhead).safeClamp(0.55f, 1.0f)
+                    hlPrimarySpFloat *= vFit
+                    condHumiditySpFloat *= vFit
+                    windUvSpFloat *= vFit
+                    lowerTelemetryOverhead = ((hlPrimarySpFloat + condHumiditySpFloat +
+                        (if (showWindLine) windUvSpFloat else 0f)) * fontScale * 1.38f) + 9f + detailsBoxPadV
+                }
                 val maxHeroTempHeightDp = (stageAvailableHeightDp - cityHeaderOverhead - lowerTelemetryOverhead - 4f)
                     .coerceAtLeast(22f)
 
@@ -1625,9 +1688,8 @@ private fun WidgetCardSurface(
                     context = context,
                     text = model.moonPhase.phaseName,
                     availWidthDp = (rightSpaceFloat - 4f).coerceAtLeast(72f),
-                    desiredPhysicalSp = ((if (isTall) 11.8f else 10.8f) + detailsFontDelta * 0.75f).coerceAtLeast(6.5f),
-                    minVirtualSp = ((if (isCompactHeight) 9.8f else 11.0f) + detailsMinDeltaVirtual * 0.75f).coerceAtLeast(6.2f),
-                    maxVirtualSp = ((if (isTall) 13.4f else 12.2f) + detailsVirtualDeltaBoost * 0.75f).coerceAtLeast(7.0f),
+                    desiredPhysicalSp = moonPhasePhysicalSp,
+                    minReadablePhysicalSp = 6.2f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 )
@@ -1657,7 +1719,7 @@ private fun WidgetCardSurface(
                     null
                 }
 
-                val fallbackSlots = if (sliderFontDelta >= 3f && stripWidthFloat < 340f) {
+                val fallbackSlots = if (sliderLayoutDelta >= 3f && stripWidthFloat < 340f) {
                     minOf(4, model.days.size)
                 } else {
                     minOf(5, model.days.size)
@@ -1677,13 +1739,14 @@ private fun WidgetCardSurface(
                     .coerceAtLeast(34f)
                 val widestDateLabel = visibleDays.maxByOrNull { it.dateDayLabel.length }?.dateDayLabel ?: "12/28 Wed"
                 val widestHiLoLabel = visibleDays.maxByOrNull { it.highLowLabel.length }?.highLowLabel ?: "99° / 99°"
+                val (sliderDatePhysicalSp, sliderHiLoPhysicalSp, sliderRainPhysicalSp) =
+                    resolveWidgetSliderPhysicalSp(safeSliderFontSp, isTall = isTall)
                 val fallbackDateSp = autoFitWidgetLineSp(
                     context = context,
                     text = widestDateLabel,
                     availWidthDp = colWidthDp - 3f,
-                    desiredPhysicalSp = ((if (isTall) 11.4f else 10.6f) + sliderFontDelta).coerceAtLeast(6.0f),
-                    minVirtualSp = (9.4f + sliderMinDeltaVirtual).coerceAtLeast(5.8f),
-                    maxVirtualSp = ((if (isTall) 14.0f else 12.8f) + sliderVirtualDeltaBoost).coerceAtLeast(6.5f),
+                    desiredPhysicalSp = sliderDatePhysicalSp,
+                    minReadablePhysicalSp = 5.8f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1691,9 +1754,8 @@ private fun WidgetCardSurface(
                     context = context,
                     text = widestHiLoLabel,
                     availWidthDp = colWidthDp - 3f,
-                    desiredPhysicalSp = ((if (isTall) 12.0f else 11.2f) + sliderFontDelta).coerceAtLeast(6.5f),
-                    minVirtualSp = (9.8f + sliderMinDeltaVirtual).coerceAtLeast(6.2f),
-                    maxVirtualSp = ((if (isTall) 14.6f else 13.4f) + sliderVirtualDeltaBoost).coerceAtLeast(7.0f),
+                    desiredPhysicalSp = sliderHiLoPhysicalSp,
+                    minReadablePhysicalSp = 6.0f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1701,9 +1763,8 @@ private fun WidgetCardSurface(
                     context = context,
                     text = "100%",
                     availWidthDp = (colWidthDp - (if (isTall) 20f else 17f) - 2.5f).coerceAtLeast(22f),
-                    desiredPhysicalSp = ((if (isTall) 11.2f else 10.2f) + sliderFontDelta * 0.85f).coerceAtLeast(6.0f),
-                    minVirtualSp = (9.0f + sliderMinDeltaVirtual * 0.85f).coerceAtLeast(5.8f),
-                    maxVirtualSp = ((if (isTall) 13.8f else 12.4f) + sliderVirtualDeltaBoost * 0.85f).coerceAtLeast(6.5f),
+                    desiredPhysicalSp = sliderRainPhysicalSp,
+                    minReadablePhysicalSp = 5.8f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1711,9 +1772,8 @@ private fun WidgetCardSurface(
                     context = context,
                     text = "10-DAY FORECAST · SWIPE ⇄   Next 5 ›",
                     availWidthDp = (stripWidthFloat - 16f).coerceAtLeast(120f),
-                    desiredPhysicalSp = (11.2f + sliderFontDelta * 0.65f).coerceAtLeast(7.5f),
-                    minVirtualSp = (10.4f + sliderMinDeltaVirtual * 0.65f).coerceAtLeast(7.0f),
-                    maxVirtualSp = (13.6f + sliderVirtualDeltaBoost * 0.65f).coerceAtLeast(8.0f),
+                    desiredPhysicalSp = (safeSliderFontSp + 0.1f).safeClamp(7.0f, 13.5f),
+                    minReadablePhysicalSp = 6.8f,
                     hostResizeRatio = hostResizeRatio,
                     fontScale = fontScale
                 ).sp
@@ -1995,7 +2055,7 @@ private fun WidgetCardSurface(
                                     maxLines = 1,
                                     style = TextStyle(
                                         color = alertTint,
-                                        fontSize = (11f + detailsFontDelta * 0.65f).coerceAtLeast(7.5f).sp,
+                                        fontSize = safeDetailsFontSp.safeClamp(7.5f, 12.5f).sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                 )
@@ -2033,8 +2093,7 @@ private fun WidgetCardSurface(
                                     Row(
                                         modifier = GlanceModifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 8.dp)
-                                            .clickable(toggleScrollAction),
+                                            .padding(horizontal = 8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(

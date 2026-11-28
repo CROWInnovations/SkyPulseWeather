@@ -1061,7 +1061,7 @@ fun SettingsDialog(
                                     text = "• Zero Accounts, Ads, or Tracking: Collects no personal identifiers, advertising IDs, or analytics.\n" +
                                         "• Foreground-Only Location: GPS is requested only when tapped while open, never in the background, and normalized to ~2 km cache cells over TLS 1.2/1.3.\n" +
                                         "• Local Storage: Saved locations stay on-device (excluded from cloud backup) and can be deleted anytime.\n" +
-                                        "• Providers: Open-Meteo.com (CC BY 4.0) · NOAA/NWS · Zippopotam.us.",
+                                        "• Providers: Open-Meteo.com (CC BY 4.0) · NOAA/NWS/NHC · IEM · NASA GIBS · Esri · Zippopotam.us.",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(bottom = 4.dp)

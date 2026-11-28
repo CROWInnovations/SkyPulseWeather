@@ -265,14 +265,18 @@ class WeatherDomainTest {
         assertEquals(74f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_FULL_SCREEN_TEMP_FONT_SP, 0.001f)
         assertEquals(74f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_TEMP_FONT_SP, 0.001f)
         assertEquals(7f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MIN_FORECAST_FONT_SP, 0.001f)
-        assertEquals(12f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP, 0.001f)
+        assertEquals(11f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP, 0.001f)
         assertEquals(22f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_FORECAST_FONT_SP, 0.001f)
         assertEquals(7f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MIN_WIDGET_DETAILS_FONT_SP, 0.001f)
-        assertEquals(13f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_WIDGET_DETAILS_FONT_SP, 0.001f)
+        assertEquals(10f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_WIDGET_DETAILS_FONT_SP, 0.001f)
         assertEquals(18f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_DETAILS_FONT_SP, 0.001f)
         assertEquals(7f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MIN_WIDGET_DATA_FONT_SP, 0.001f)
-        assertEquals(12f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP, 0.001f)
+        assertEquals(9f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_WIDGET_DATA_FONT_SP, 0.001f)
         assertEquals(17f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.MAX_WIDGET_DATA_FONT_SP, 0.001f)
+        assertEquals(60f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_WIDGET_TEMP_FONT_SP, 0.001f)
+        assertEquals(16f, com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_WIDGET_TIME_FONT_SP, 0.001f)
+        assertEquals(0xFF6AFF25.toInt(), com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_WIDGET_TEMP_COLOR_ARGB)
+        assertEquals(0xFF18FF18.toInt(), com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository.DEFAULT_WIDGET_TIME_COLOR_ARGB)
         assertEquals("12sp", com.crowinnovations.skypulseweather.ui.components.formatFontSpLabel(12.0f))
         assertEquals("12.5sp", com.crowinnovations.skypulseweather.ui.components.formatFontSpLabel(12.5f))
         assertEquals("11.5sp", com.crowinnovations.skypulseweather.ui.components.formatFontSpLabel(11.5f))
@@ -299,22 +303,37 @@ class WeatherDomainTest {
     @Test
     fun separatedFullScreenAndWidgetSettingsAndSliderBackingWorkIndependently() {
         val defaults = com.crowinnovations.skypulseweather.data.local.AppPreferences()
+        // Out-of-the-box widget defaults match S25 widget preset while Full Screen time stays off
+        assertTrue(defaults.widgetShowTimeDisplay)
+        assertEquals(com.crowinnovations.skypulseweather.domain.DateDisplayPosition.LEFT_OF_TIME, defaults.widgetDateDisplayPosition)
+        assertEquals(16f, defaults.widgetTimeFontSizeSp, 0.001f)
+        assertEquals(DisplayFontStyle.SERIF, defaults.widgetTimeFontStyle)
+        assertEquals(0xFF18FF18.toInt(), defaults.widgetTimeTextColorArgb)
+        assertEquals(60f, defaults.widgetTempFontSizeSp, 0.001f)
+        assertEquals(DisplayFontStyle.DEFAULT, defaults.widgetTempFontStyle)
+        assertEquals(0xFF6AFF25.toInt(), defaults.widgetTempTextColorArgb)
+        assertEquals(10f, defaults.widgetDetailsFontSizeSp, 0.001f)
+        assertEquals(9f, defaults.widgetDataFontSizeSp, 0.001f)
+        assertEquals(com.crowinnovations.skypulseweather.domain.BackingTone.DARKEN, defaults.widgetSliderBackingTone)
+        assertEquals(10, defaults.widgetSliderTransparencyDeltaPct)
+
         val updatedWidgetOnly = defaults.copy(
             widgetTempFontSizeSp = 66.5f,
             widgetTempFontStyle = DisplayFontStyle.SERIF,
             widgetTempTextColorArgb = DisplayTextColor.MINT.argb,
-            widgetShowTimeDisplay = true,
+            widgetShowTimeDisplay = false,
             widgetTimeTextColorArgb = DisplayTextColor.GOLD.argb,
-            widgetDataFontSizeSp = 9.5f,
-            widgetSliderBackingTone = com.crowinnovations.skypulseweather.domain.BackingTone.DARKEN,
+            widgetDataFontSizeSp = 11.5f,
+            widgetSliderBackingTone = com.crowinnovations.skypulseweather.domain.BackingTone.LIGHTEN,
             widgetSliderTransparencyDeltaPct = -30
         )
         // Full-screen fields remain completely untouched when widget fields change
         assertEquals(46f, updatedWidgetOnly.fullScreenTempFontSizeSp, 0.001f)
-        assertEquals(DisplayFontStyle.DEFAULT, updatedWidgetOnly.fullScreenTempFontStyle)
+        assertEquals(DisplayFontStyle.SERIF, updatedWidgetOnly.fullScreenTempFontStyle)
         assertEquals(DisplayTextColor.WHITE.argb, updatedWidgetOnly.fullScreenTempTextColorArgb)
         assertFalse(updatedWidgetOnly.fullScreenShowTimeDisplay)
-        assertEquals(12f, updatedWidgetOnly.forecastFontSizeSp, 0.001f)
+        assertEquals(com.crowinnovations.skypulseweather.domain.DateDisplayPosition.OFF, updatedWidgetOnly.fullScreenDateDisplayPosition)
+        assertEquals(11f, updatedWidgetOnly.forecastFontSizeSp, 0.001f)
 
         // Widget slider backing transparency & tone checks
         val defaultSlider = com.crowinnovations.skypulseweather.widget.resolveWidgetSliderBackingColor(
@@ -353,5 +372,248 @@ class WeatherDomainTest {
         assertEquals(0.0f, clearDetailsDefault.alpha, 0.001f)
         assertTrue(smokedDetails.alpha > 0.40f)
         assertTrue(darkenedDetails.alpha > 0.65f)
+    }
+
+    @Test
+    fun radarProjectionPinchZoomSquareMilesAndMultiStateLookupWork() {
+        val centerLat = 38.6270
+        val centerLon = -90.1994
+        val screenPos = com.crowinnovations.skypulseweather.domain.RadarProjection.latLonToScreenOffset(
+            lat = 39.0997,
+            lon = -94.5786,
+            centerLat = centerLat,
+            centerLon = centerLon,
+            zoom = 7.0f,
+            viewportWidthPx = 1080f,
+            viewportHeightPx = 2200f
+        )
+        val roundTrip = com.crowinnovations.skypulseweather.domain.RadarProjection.screenOffsetToLatLon(
+            screenX = screenPos.x,
+            screenY = screenPos.y,
+            centerLat = centerLat,
+            centerLon = centerLon,
+            zoom = 7.0f,
+            viewportWidthPx = 1080f,
+            viewportHeightPx = 2200f
+        )
+        assertEquals(39.0997, roundTrip.latitude, 0.02)
+        assertEquals(-94.5786, roundTrip.longitude, 0.02)
+
+        // Local square-mile focus when zoomed in
+        val localBounds = com.crowinnovations.skypulseweather.domain.RadarProjection.computeViewportBounds(
+            centerLat = centerLat,
+            centerLon = centerLon,
+            zoom = 12.5f,
+            viewportWidthPx = 1080f,
+            viewportHeightPx = 1800f
+        )
+        assertTrue(localBounds.areaSquareMiles < 120.0)
+        assertTrue(localBounds.formattedCoverageBadge().contains("sq mi"))
+
+        // Multi-state coverage when zoomed out
+        val multiStateBounds = com.crowinnovations.skypulseweather.domain.RadarProjection.computeViewportBounds(
+            centerLat = centerLat,
+            centerLon = centerLon,
+            zoom = 6.0f,
+            viewportWidthPx = 1080f,
+            viewportHeightPx = 1800f
+        )
+        assertTrue(multiStateBounds.areaSquareMiles > 80_000.0)
+        assertTrue(multiStateBounds.formattedCoverageBadge().contains("Multi-State"))
+
+        val continentalBounds = com.crowinnovations.skypulseweather.domain.RadarProjection.computeViewportBounds(
+            centerLat = centerLat,
+            centerLon = centerLon,
+            zoom = 4.2f,
+            viewportWidthPx = 1080f,
+            viewportHeightPx = 1800f
+        )
+        assertTrue(continentalBounds.formattedCoverageBadge().contains("Continental"))
+
+        val visibleStates = com.crowinnovations.skypulseweather.domain.RadarProjection.intersectingUsStates(
+            bounds = multiStateBounds,
+            centerLat = centerLat,
+            centerLon = centerLon
+        )
+        assertTrue(visibleStates.contains("MO"))
+        assertTrue(visibleStates.contains("IL"))
+        assertTrue(visibleStates.size >= 4)
+
+        val timeline = com.crowinnovations.skypulseweather.domain.RadarProjection.buildTimelineFrames(1_795_838_000_000L)
+        assertTrue(timeline.any { !it.isForecast && it.offsetMinutes < 0 })
+        assertTrue(timeline.any { !it.isForecast && it.offsetMinutes == 0 && it.relativeLabel == "LIVE NOW" })
+        assertTrue(timeline.any { it.isForecast && it.forecastHourStep == 12 })
+    }
+
+    @Test
+    fun nwsTornadoWarningWatchNhcCycloneAndInchesParsingWork() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val sampleNwsGeoJson = """
+            {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "id": "urn:oid:2.49.0.1.840.0.tor1",
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[[-94.6, 36.9], [-94.1, 36.9], [-94.1, 37.3], [-94.6, 37.3], [-94.6, 36.9]]]
+                  },
+                  "properties": {
+                    "id": "tor-warn-1",
+                    "event": "Tornado Warning",
+                    "severity": "Extreme",
+                    "headline": "Tornado Warning issued for Jasper County",
+                    "areaDesc": "Jasper, MO",
+                    "description": "At 515 PM CDT, a confirmed large and extremely dangerous tornado was located near Joplin.",
+                    "parameters": {
+                      "tornadoDetection": ["OBSERVED"],
+                      "tornadoDamageThreat": ["CATASTROPHIC"],
+                      "maxWindGust": ["95 mph"],
+                      "maxHailSize": ["2.00"]
+                    }
+                  }
+                },
+                {
+                  "id": "urn:oid:2.49.0.1.840.0.torwatch1",
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[[-96.0, 35.5], [-93.5, 35.5], [-93.5, 38.0], [-96.0, 38.0], [-96.0, 35.5]]]
+                  },
+                  "properties": {
+                    "id": "tor-watch-1",
+                    "event": "Tornado Watch",
+                    "severity": "Severe",
+                    "headline": "Tornado Watch 214 remains in effect",
+                    "areaDesc": "Eastern OK; Western AR; Southwest MO",
+                    "description": "Tornadoes and scattered gusts up to 75 mph expected.",
+                    "parameters": {}
+                  }
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val hazards = com.crowinnovations.skypulseweather.data.remote.RadarMapRepository.parseNwsHazardGeoJson(
+            json = json,
+            rawGeoJson = sampleNwsGeoJson
+        )
+        assertEquals(2, hazards.size)
+        val torWarn = hazards[0]
+        assertEquals(com.crowinnovations.skypulseweather.domain.HazardPolygonKind.TORNADO_WARNING, torWarn.kind)
+        assertTrue(torWarn.mapCalloutSummary().contains("CATASTROPHIC"))
+        assertTrue(torWarn.mapCalloutSummary().contains("OBSERVED"))
+        assertTrue(torWarn.mapCalloutSummary().contains("95 mph"))
+
+        val torWatch = hazards[1]
+        assertEquals(com.crowinnovations.skypulseweather.domain.HazardPolygonKind.TORNADO_WATCH, torWatch.kind)
+        assertTrue(torWatch.mapCalloutSummary().contains("75 mph"))
+
+        val sampleNhc = """
+            {
+              "activeStorms": [
+                {
+                  "id": "al092026",
+                  "name": "Helene",
+                  "classification": "HU",
+                  "intensity": 115,
+                  "lat": 27.4,
+                  "lon": -84.2,
+                  "movementDir": "NNE",
+                  "movementSpeed": "16"
+                }
+              ]
+            }
+        """.trimIndent()
+        val cyclones = com.crowinnovations.skypulseweather.data.remote.RadarMapRepository.parseNhcCyclonesJson(
+            json = json,
+            currentStormsBody = sampleNhc
+        )
+        assertEquals(1, cyclones.size)
+        assertEquals("CAT 4", cyclones[0].categoryBadge)
+        assertTrue(cyclones[0].maxSustainedWindMph >= 130)
+        assertEquals("10–20\"", cyclones[0].expectedRainfallInches)
+
+        val snowMarker = com.crowinnovations.skypulseweather.domain.RegionalPrecipMarker(
+            id = "m1",
+            label = "NW Sector",
+            point = com.crowinnovations.skypulseweather.domain.LatLonPoint(41.0, -90.0),
+            isPrimaryLocation = false,
+            expectedRainInches = 0.0,
+            expectedSnowInches = 4.6,
+            weatherCode = 75
+        )
+        assertEquals("\u2744\uFE0F Snow 4.6\"", snowMarker.formattedBadgeText())
+
+        val rainMarker = com.crowinnovations.skypulseweather.domain.RegionalPrecipMarker(
+            id = "m2",
+            label = "SE Sector",
+            point = com.crowinnovations.skypulseweather.domain.LatLonPoint(35.0, -89.0),
+            isPrimaryLocation = false,
+            expectedRainInches = 1.85,
+            expectedSnowInches = 0.0,
+            weatherCode = 65
+        )
+        assertEquals("\uD83C\uDF27\uFE0F Rain 1.9\"", rainMarker.formattedBadgeText())
+    }
+
+    @Test
+    fun widgetDetailsAndSliderFontSpMatchSelectedSettingsWithoutDefaultDeltaInflation() {
+        // Verify 9.0sp selected in Settings maps directly to 9.0sp (primary) and 8.8sp (secondary), NEVER 13.4sp
+        val (primary9, secondary9, moon9) = com.crowinnovations.skypulseweather.widget.resolveWidgetDetailsPhysicalSp(
+            selectedDetailsSp = 9.0f,
+            isTall = true
+        )
+        assertEquals(9.0f, primary9, 0.01f)
+        assertEquals(8.8f, secondary9, 0.01f)
+        assertEquals(8.8f, moon9, 0.01f)
+
+        // Verify minimum 7.0sp and maximum 18.0sp scale 1:1 without floor inflation or cap clipping
+        val (primary7, secondary7, _) = com.crowinnovations.skypulseweather.widget.resolveWidgetDetailsPhysicalSp(
+            selectedDetailsSp = 7.0f,
+            isTall = true
+        )
+        assertEquals(7.0f, primary7, 0.01f)
+        assertEquals(6.8f, secondary7, 0.01f)
+
+        val (primary18, secondary18, _) = com.crowinnovations.skypulseweather.widget.resolveWidgetDetailsPhysicalSp(
+            selectedDetailsSp = 18.0f,
+            isTall = true
+        )
+        assertEquals(18.0f, primary18, 0.01f)
+        assertEquals(17.8f, secondary18, 0.01f)
+
+        // Verify virtual sp converter NEVER inflates 7.0sp or 9.0sp above desiredPhysicalSp / hostResizeRatio
+        val (target7, floor7) = com.crowinnovations.skypulseweather.widget.computeTargetAndFloorVirtualSp(
+            desiredPhysicalSp = 7.0f,
+            minReadablePhysicalSp = 6.0f,
+            hostResizeRatio = 1.0f
+        )
+        assertEquals(7.0f, target7, 0.01f)
+        assertTrue(floor7 <= target7)
+
+        // Verify 10-day slider 9.5sp maps directly to 9.5sp Hi/Lo and 9.0sp Date, NEVER 12.0sp / 11.4sp
+        val (date95, hiLo95, rain95) = com.crowinnovations.skypulseweather.widget.resolveWidgetSliderPhysicalSp(
+            selectedSliderSp = 9.5f,
+            isTall = true
+        )
+        assertEquals(9.5f, hiLo95, 0.01f)
+        assertEquals(9.0f, date95, 0.01f)
+        assertEquals(9.1f, rain95, 0.01f)
+    }
+
+    @Test
+    fun clearAirRadarClutterFilterStripsSlateNoiseAndPreservesTruePrecipitation() {
+        // Sub-12 dBZ slate-gray / pale-lavender clear-air clutter from N0Q/HRRR is stripped
+        assertTrue(com.crowinnovations.skypulseweather.data.remote.RadarMapRepository.isSubThresholdClearAirRadarNoise(87, 109, 164))
+        assertTrue(com.crowinnovations.skypulseweather.data.remote.RadarMapRepository.isSubThresholdClearAirRadarNoise(116, 131, 172))
+        assertTrue(com.crowinnovations.skypulseweather.data.remote.RadarMapRepository.isSubThresholdClearAirRadarNoise(136, 146, 178))
+
+        // True rain/storm greens, yellows, oranges, reds, and hail magentas are preserved
+        assertFalse(com.crowinnovations.skypulseweather.data.remote.RadarMapRepository.isSubThresholdClearAirRadarNoise(0, 220, 40))
+        assertFalse(com.crowinnovations.skypulseweather.data.remote.RadarMapRepository.isSubThresholdClearAirRadarNoise(245, 225, 10))
+        assertFalse(com.crowinnovations.skypulseweather.data.remote.RadarMapRepository.isSubThresholdClearAirRadarNoise(220, 30, 25))
+        assertFalse(com.crowinnovations.skypulseweather.data.remote.RadarMapRepository.isSubThresholdClearAirRadarNoise(215, 40, 210))
     }
 }

@@ -76,6 +76,7 @@
             <intent-filter>
                 <action android:name="com.crowinnovations.skypulseweather.ACTION_REFRESH_WIDGET" />
                 <action android:name="com.crowinnovations.skypulseweather.ACTION_SCROLL_FORECAST" />
+                <action android:name="com.crowinnovations.skypulseweather.ACTION_NOOP_SLIDER_TAP" />
                 <data android:scheme="skypulse" />
             </intent-filter>
             <meta-data
@@ -95,6 +96,7 @@
             <intent-filter>
                 <action android:name="com.crowinnovations.skypulseweather.ACTION_REFRESH_WIDGET" />
                 <action android:name="com.crowinnovations.skypulseweather.ACTION_SCROLL_FORECAST" />
+                <action android:name="com.crowinnovations.skypulseweather.ACTION_NOOP_SLIDER_TAP" />
                 <data android:scheme="skypulse" />
             </intent-filter>
             <meta-data
@@ -114,6 +116,7 @@
             <intent-filter>
                 <action android:name="com.crowinnovations.skypulseweather.ACTION_REFRESH_WIDGET" />
                 <action android:name="com.crowinnovations.skypulseweather.ACTION_SCROLL_FORECAST" />
+                <action android:name="com.crowinnovations.skypulseweather.ACTION_NOOP_SLIDER_TAP" />
                 <data android:scheme="skypulse" />
             </intent-filter>
             <meta-data

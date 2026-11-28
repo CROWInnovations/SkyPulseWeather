@@ -372,7 +372,8 @@ fun HourlyForecastCard(
         UserPreferencesRepository.MIN_FORECAST_FONT_SP,
         UserPreferencesRepository.MAX_FORECAST_FONT_SP
     )
-    val deltaSp = safeFontSp - UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP
+    // Fixed 12sp typography baseline so changing DEFAULT_FORECAST_FONT_SP never shifts rendered sp sizes
+    val deltaSp = safeFontSp - 12.0f
     val effPalette = resolveEffectiveForecastPalette(palette, transparencyDeltaPct, backingTone)
     val pillAlpha = if (transparencyDeltaPct < 0) 0.22f else 0.14f
     val headerStyle = MaterialTheme.typography.labelMedium.copy(
@@ -498,7 +499,8 @@ fun FiveDayForecastCard(
         UserPreferencesRepository.MIN_FORECAST_FONT_SP,
         UserPreferencesRepository.MAX_FORECAST_FONT_SP
     )
-    val deltaSp = safeFontSp - UserPreferencesRepository.DEFAULT_FORECAST_FONT_SP
+    // Fixed 12sp typography baseline so changing DEFAULT_FORECAST_FONT_SP never shifts rendered sp sizes
+    val deltaSp = safeFontSp - 12.0f
     val effPalette = resolveEffectiveForecastPalette(palette, transparencyDeltaPct, backingTone)
     val overallMin = tenDays.minOf { it.lowCelsius }
     val overallMax = tenDays.maxOf { it.highCelsius }

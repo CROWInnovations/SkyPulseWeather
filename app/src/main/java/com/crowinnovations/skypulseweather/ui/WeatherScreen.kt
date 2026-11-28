@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -71,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.crowinnovations.skypulseweather.R
 import com.crowinnovations.skypulseweather.data.local.UserPreferencesRepository
+import com.crowinnovations.skypulseweather.data.remote.RadarMapRepository
 import com.crowinnovations.skypulseweather.domain.BackingTone
 import com.crowinnovations.skypulseweather.domain.DateDisplayPosition
 import com.crowinnovations.skypulseweather.domain.DisplayFontStyle
@@ -91,6 +93,7 @@ import com.crowinnovations.skypulseweather.ui.components.SevereAlertsBanner
 import com.crowinnovations.skypulseweather.ui.components.SettingsDialog
 import com.crowinnovations.skypulseweather.ui.components.SingleLineText
 import com.crowinnovations.skypulseweather.ui.components.SkyBackdrop
+import com.crowinnovations.skypulseweather.ui.components.WeatherRadarMapScreen
 import com.crowinnovations.skypulseweather.ui.theme.SkyPalette
 import com.crowinnovations.skypulseweather.ui.theme.rememberIsDarkTheme
 import com.crowinnovations.skypulseweather.ui.theme.skyPaletteFor
@@ -104,10 +107,13 @@ import java.util.Locale
 @Composable
 fun WeatherScreen(
     uiState: WeatherUiState,
+    radarRepository: RadarMapRepository,
     onSelectLocation: (Long) -> Unit,
     onRefresh: () -> Unit,
     onOpenLocations: () -> Unit,
     onCloseLocations: () -> Unit,
+    onOpenRadar: () -> Unit,
+    onCloseRadar: () -> Unit,
     onOpenSettings: () -> Unit,
     onCloseSettings: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -213,6 +219,7 @@ fun WeatherScreen(
                 isRefreshing = uiState.isRefreshing,
                 palette = palette,
                 onOpenLocations = onOpenLocations,
+                onOpenRadar = onOpenRadar,
                 onRefresh = onRefresh,
                 onOpenSettings = onOpenSettings
             )
@@ -369,6 +376,15 @@ fun WeatherScreen(
                 onDismiss = onCloseSettings
             )
         }
+
+        if (uiState.showRadarMap) {
+            WeatherRadarMapScreen(
+                activeLocation = uiState.activeLocation,
+                windUnit = uiState.preferences.windUnit,
+                radarRepository = radarRepository,
+                onClose = onCloseRadar
+            )
+        }
     }
 }
 
@@ -509,6 +525,7 @@ private fun TopHeaderBar(
     isRefreshing: Boolean,
     palette: SkyPalette,
     onOpenLocations: () -> Unit,
+    onOpenRadar: () -> Unit,
     onRefresh: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -569,7 +586,7 @@ private fun TopHeaderBar(
             )
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(6.dp))
 
         HeaderCircleActionButton(
             onClick = onOpenLocations,
@@ -583,7 +600,21 @@ private fun TopHeaderBar(
             )
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(6.dp))
+
+        HeaderCircleActionButton(
+            onClick = onOpenRadar,
+            palette = palette
+        ) {
+            Icon(
+                imageVector = Icons.Default.Radar,
+                contentDescription = "Live Weather Radar & Cloud Map",
+                tint = palette.primaryText,
+                modifier = Modifier.size(19.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(6.dp))
 
         HeaderCircleActionButton(
             onClick = onRefresh,
@@ -606,7 +637,7 @@ private fun TopHeaderBar(
             }
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(6.dp))
 
         HeaderCircleActionButton(
             onClick = onOpenSettings,
@@ -632,7 +663,7 @@ private fun HeaderCircleActionButton(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(40.dp)
+            .size(38.dp)
             .clip(CircleShape)
             .background(palette.cardSurface)
             .border(1.dp, palette.cardBorder, CircleShape)
